@@ -18,17 +18,6 @@ def add_indicators(data):
     # Calculate % change last value
     data["Return"] = data["Close"].pct_change()
 
-    # Simple moving average
-    data['SMA20'] = data['Close'].rolling(window=window, min_periods=1).mean()
-
-    # Exponetial moving average
-    data['EMA20'] = data['Close'].ewm(span=window).mean()
-
-    # Wheited moving average
-    data['WMA20'] = data["Close"].rolling(window=window, min_periods=1).apply(
-        lambda prices: np.dot(prices, np.arange(1, len(prices)+1))/np.arange(1, len(prices)+1).sum()
-        if len(prices) > 0 else np.nan, raw=True)
-    
     # Relative Strength index
     delta = data["Close"].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=window, min_periods=1).mean()
@@ -44,17 +33,14 @@ def add_indicators(data):
     # Deviazione std
     data["STD20"] = data["Close"].rolling(window=window, min_periods=1).std()
     
-    # Bollinger Bands
-    data["Boll_Up"] = data["SMA20"] + 2 * data["STD20"]
-    data["Boll_Down"] = data["SMA20"] - 2 * data["STD20"]
+    data = data.drop(columns=["Close", "Low", "High", "Open"])
+
     return data
 
-
-data_set = {}
 for stock in stocks:
     try:
         print(f"Processing {stock}...")
-        df = yf.download(stock, start="2020-01-01", end="2025-09-01", auto_adjust=True)
+        df = yf.download(stock, start="2015-01-01", end=pd.Timestamp.today().strftime('%Y-%m-%d'), auto_adjust=True)
         if df is None or df.empty:
             print(f"  No data for {stock}, skipping.")
             continue
@@ -64,8 +50,8 @@ for stock in stocks:
 
         # Data quality: drop rows where Close is NaN (early)
         initial_rows = len(df)
-        close_nan_count = df['Close'].isna().sum()
-        df = df.dropna(subset=['Close'])
+        close_nan_count = df['Return'].isna().sum()
+        df = df.dropna(subset=['Return'])
         print(f"  Removed {close_nan_count} rows with NaN Close values")
 
         # Remove rows where more than 50% of columns are NaN
@@ -77,8 +63,8 @@ for stock in stocks:
             continue
 
         # Create target and shift features (predict next day's Close)
-        df["Target"] = df["Close"].shift(-1)
-        feature_cols = [col for col in df.columns if col not in ['Target', 'Close']]
+        df["Target"] = df["Return"].shift(-1)
+        feature_cols = [col for col in df.columns if col not in ['Target', 'Return']]
         df[feature_cols] = df[feature_cols].shift(1)
 
         # Final cleanup and save processed CSV
