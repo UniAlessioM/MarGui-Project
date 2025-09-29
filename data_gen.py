@@ -42,6 +42,10 @@ def add_indeces(data):
     # Calculate % change last value
     data["Return"] = data["Close"].pct_change()
 
+    data["Return-1"] = data["Return"].shift(1)
+    data["Return-3"] = data["Return"].shift(3)
+    data["Return-7"] = data["Return"].shift(7)
+
     # Simple moving average 20 days
 
     sma_window = 20
@@ -60,26 +64,6 @@ def add_indeces(data):
     data["EMA50"] = ema_obj.ema_indicator()
     ema_obj = EMAIndicator(data["Close"],window=ema_window2,fillna=False)
     data["EMA200"] = ema_obj.ema_indicator()
-
-    """
-    BUY = Volume > vol.ema200:
-    Interpretazione: Un segnale di acquisto è considerato più forte o convalidato quando il volume 
-    di trading attuale è superiore alla sua media esponenziale a lungo termine (200 periodi).
-    Significato: Questo suggerisce che c'è un interesse significativo e una partecipazione elevata 
-    del mercato nel movimento di prezzo corrente. Se il prezzo sta salendo e il volume è superiore 
-    alla sua EMA200, è un buon segno che gli acquirenti sono in forza e il trend rialzista potrebbe 
-    essere sostenibile.
-    SELL = Volume < vol.ema200:
-    Interpretazione: Un segnale di vendita è considerato più forte o convalidato quando il volume 
-    di trading attuale è inferiore alla sua media esponenziale a lungo termine.
-    Significato: Questo può essere interpretato in diversi modi a seconda del contesto del prezzo:
-    Se il prezzo sta scendendo e il volume è inferiore alla sua EMA200, il trend ribassista potrebbe 
-    essere debole o non avere una forte convinzione.
-    Se il prezzo sta salendo ma il volume è inferiore alla sua EMA200, 
-    potrebbe indicare che il trend rialzista è debole, mancano acquirenti forti e 
-    una potenziale inversione potrebbe essere imminente 
-    (un segnale di "non conferma" per il trend rialzista).
-    """
 
 
     vol_ema_200 = EMAIndicator(data["Volume"],window=ema_window2,fillna=False)
@@ -118,7 +102,7 @@ def add_indeces(data):
 
     # Deviazione std degli ultimi 20 giorni
     window = 20
-    std = data["Close"].rolling(window=window, min_periods=1).std()
+    data["Close_STD20"] = data["Close"].rolling(window=window, min_periods=1).std()
     
 
 
@@ -128,8 +112,14 @@ def add_indeces(data):
     # Conversely, when the price approaches the lower band (Boll_Down), 
     # it may indicate oversold conditions, suggesting a potential price reversal to the upside.
     
-    data["Boll_Up"] = data["SMA"] + 2 *std
-    data["Boll_Down"] = data["SMA"] - 2 *std
+    data["Boll_Up"] = data["SMA"] + 2 *data["Close_STD20"]
+    data["Boll_Down"] = data["SMA"] - 2 *data["Close_STD20"]
+
+
+
+    data["Return_STD20"] = data["Close"].rolling(window=window, min_periods=1).std()
+    data["Return_STD10"] = data["Close"].rolling(window=window-10, min_periods=1).std()
+
 
 
     #Stochastics measures the current price of a stock relative to it’s price range over a specific period of time. It has two components: %K and %D. -
@@ -156,6 +146,9 @@ def add_indeces(data):
     data['%D'] = stoch_oscillator.stoch_signal()
 
 
+    data["Dist_low_band"] = (data["Close"] - data["Boll_Down"])/data["Close"]
+    data["Dist_up_band"] = (data["Close"] - data["Boll_Up"])/data["Close"]
+
     return data
 
 
@@ -163,7 +156,7 @@ data_set = {}
 #Vengono prelevati i dati delle varie aziente segnate in stocks.txt
 for stock in stocks:
     try:
-        df = yf.download(stock, start="2000-01-01", end="2025-09-01", auto_adjust=True)
+        df = yf.download(stock, start="2015-01-01", end="2025-09-01", auto_adjust=True)
 
         if df is None or df.empty:
             print(f"  No data for {stock}, skipping.")
@@ -192,14 +185,14 @@ for stock in stocks:
         
         # Final cleanup and save processed CSV
         df = df.dropna()
-        df = df[["Close","High","Low","Open","Volume","Vol_EMA200","Return","SMA","EMA50","EMA200","RSI","MACD","MACD_Signal","Boll_Up","Boll_Down","%K","%D","BSH"]]
+        #df = df[["Close","High","Low","Open","Volume","Vol_EMA200","Return","SMA","EMA50","EMA200","RSI","MACD","MACD_Signal","Boll_Up","Boll_Down","%K","%D","BSH"]]
 
         # Conteggio delle etichette BUY/SELL/HOLD usando pandas
-        bsh_counts = df['BSH'].value_counts()
-        print(f"  Conteggio etichette per {stock}:")
-        print(bsh_counts)
-        print(f"  Totale righe: {len(df)}")
-        print("-" * 40)
+        #bsh_counts = df['BSH'].value_counts()
+        #print(f"  Conteggio etichette per {stock}:")
+        #print(bsh_counts)
+        #print(f"  Totale righe: {len(df)}")
+        #print("-" * 40)
 
         df.to_csv(f"csv/{stock}_indicators.csv")
         print(f"  Exported processed CSV: csv/{stock}_indicators_processed.csv (rows: {len(df)})")
