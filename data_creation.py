@@ -63,9 +63,7 @@ for stock in stocks:
             continue
 
         # Create target and shift features (predict next day's Close)
-        df["Target"] = df["Return"].shift(-1)
-        feature_cols = [col for col in df.columns if col not in ['Target', 'Return']]
-        df[feature_cols] = df[feature_cols].shift(1)
+        #df["Target"] = df["Return"].shift(-1)
 
         # Final cleanup and save processed CSV
         df = df.dropna()
