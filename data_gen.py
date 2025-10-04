@@ -10,6 +10,20 @@ os.makedirs("csv", exist_ok=True)
 with open("stocks.txt", "r") as f:
     stocks = [line.strip() for line in f if line.strip()]
 
+def scale_rsi(rsi):
+    return (rsi - 50) / 50   # RSI=50 → 0 (neutral), RSI=100 → +1, RSI=0 → -1
+
+def scale_return(ret, cap=0.05):  # cap returns at ±5%
+    return np.clip(ret / cap, -1, 1)
+
+def scale_macd(macd, signal):
+    diff = macd - signal
+    return np.tanh(diff)  # squash into (-1,1)
+
+def scale_bollinger(close, boll_up, boll_down):
+    mid = (boll_up + boll_down) / 2
+    half_width = (boll_up - boll_down) / 2
+    return np.clip((close - mid) / half_width, -1, 1)
 
 #Criterio dietro alle etichette BUY / SELL / HOLD
 def BSH_labeling(row):
@@ -41,10 +55,9 @@ def add_indeces(data):
     
     # Calculate % change last value
     data["Return"] = data["Close"].pct_change()
-
-    data["Return-1"] = data["Return"].shift(1)
-    data["Return-3"] = data["Return"].shift(3)
-    data["Return-7"] = data["Return"].shift(7)
+    data["Return_mean_5"] = data["Return"].rolling(window=5, min_periods=1).std()
+    data["Return_std_5"] = data["Return"].rolling(window=5, min_periods=1).std()
+    data["Return_mean_10"] = data["Return"].rolling(window=10, min_periods=1).std()
 
     # Simple moving average 20 days
 
@@ -63,32 +76,18 @@ def add_indeces(data):
     ema_obj = EMAIndicator(data["Close"],window=ema_window1,fillna=False)
     data["EMA50"] = ema_obj.ema_indicator()
     ema_obj = EMAIndicator(data["Close"],window=ema_window2,fillna=False)
-    data["EMA200"] = ema_obj.ema_indicator()
+    #data["EMA200"] = ema_obj.ema_indicator()
 
 
     vol_ema_200 = EMAIndicator(data["Volume"],window=ema_window2,fillna=False)
-    data["Vol_EMA200"] = vol_ema_200.ema_indicator()
+    #data["Vol_EMA200"] = vol_ema_200.ema_indicator()
 
-    # Wheited moving average
-    #data['WMA20'] = data["Close"].rolling(window=window, min_periods=1).apply(
-    #    lambda prices: np.dot(prices, np.arange(1, len(prices)+1))/np.arange(1, len(prices)+1).sum()
-    #   if len(prices) > 0 else np.nan, raw=True)
-    
-    # Relative Strength index (RSI)
-    #Exceeding Fair Value: The stock's price has become unsustainable and is 
-    # trading above what its underlying fundamentals might justify. 
-    #Market Euphoria: A period of high buying interest and optimism, 
-    # sometimes fueled by fear of missing out (FOMO), 
-    # can push prices to seemingly unsustainable levels. 
-    #Potential for a Reversal: An overbought condition signals 
-    # that a pullback or decline in price is likely, 
-    # as investors may start selling to lock in profits. 
     RSIwindow = 14
 
     #Ho usato un calcolo standard di libreria per calcolare RSI
     closeValues = data['Close']
     rsi_14 = RSIIndicator(close=closeValues, window=RSIwindow)
-    data["RSI"] = rsi_14.rsi()
+    #data["RSI"] = rsi_14.rsi()
 
     # Moving Average Convergence Divergence
     # Solitamente è bene usare RSI e MACD insieme poichè l'uno "aggiusta il tiro" dell'altro
@@ -104,32 +103,26 @@ def add_indeces(data):
     window = 20
     data["Close_STD20"] = data["Close"].rolling(window=window, min_periods=1).std()
     
-
-
-    # Bollinger Bands
-    # When the price moves close to the upper band (Boll_Up), 
-    # it may indicate overbought conditions, suggesting a potential price reversal to the downside.
-    # Conversely, when the price approaches the lower band (Boll_Down), 
-    # it may indicate oversold conditions, suggesting a potential price reversal to the upside.
-    
     data["Boll_Up"] = data["SMA"] + 2 *data["Close_STD20"]
     data["Boll_Down"] = data["SMA"] - 2 *data["Close_STD20"]
 
+    lags = [1, 3, 7]
+    features = ["Close", "Return"]
+
+    for f in features:
+        for l in lags:
+            data[f"{f}_lag{l}"] = data[f].shift(l)
 
 
-    data["Return_STD20"] = data["Close"].rolling(window=window, min_periods=1).std()
-    data["Return_STD10"] = data["Close"].rolling(window=window-10, min_periods=1).std()
+    #data["Tec_Sentiment"] = (
+    #    0.3 * scale_return(data["Return"]) +
+    #    0.3 * scale_rsi(data["RSI"]) +
+    #    0.2 * scale_macd(data["MACD"], data["MACD_Signal"]) +
+    #    0.2 * scale_bollinger(data["Close"], data["Boll_Up"], data["Boll_Down"])
+    #)
 
+    #data["Smoth_Tec_Sentiment10"] = data["Tec_Sentiment"].ewm(span=10).mean()
 
-
-    #Stochastics measures the current price of a stock relative to it’s price range over a specific period of time. It has two components: %K and %D. -
-    #%K represents the current closing price of the stock relative to the highest and lowest prices over a defined period and it ranges from O to 100.
-    #When %K is near 0, it suggests the stock is trading near the lower end of its price range, indicating an oversold condition. When %K is near 100, it
-    #suggests the stock is trading near the upper end of its price range, indicating an overbought condition. - %D is the smoothed version of %K and is
-    #often represented as moving average of %K.
-
-    # window: periodicità per %K (solitamente 14)
-    # smooth_window: periodicità per %D (solitamente 3)
     stoch_oscillator = StochasticOscillator(
         high=data['High'],
         low=data['Low'],
@@ -145,14 +138,12 @@ def add_indeces(data):
     # Calcola %D (stoch_d)
     data['%D'] = stoch_oscillator.stoch_signal()
 
-
     data["Dist_low_band"] = (data["Close"] - data["Boll_Down"])/data["Close"]
     data["Dist_up_band"] = (data["Close"] - data["Boll_Up"])/data["Close"]
 
-    return data
+    return data.drop(columns=['Open', 'Low', 'High'])
 
 
-data_set = {}
 #Vengono prelevati i dati delle varie aziente segnate in stocks.txt
 for stock in stocks:
     try:
@@ -165,22 +156,6 @@ for stock in stocks:
         # Add indicators
         df = add_indeces(df)
 
-        # Data quality: drop rows where Close is NaN (early)
-        initial_rows = len(df)
-        close_nan_count = df['Close'].isna().sum()
-        df = df.dropna(subset=['Close'])
-        print(f"  Removed {close_nan_count} rows with NaN Close values")
-
-        # Remove rows where more than 50% of columns are NaN
-        df = df.dropna(thresh=int(len(df.columns) * 0.5))
-        print(f"  Kept {len(df)}/{initial_rows} rows after cleaning")
-
-        if len(df) < 100:
-            print(f"  Warning: Only {len(df)} rows for {stock}, skipping")
-            continue
-
-        #Inserimento delle etichette BUY/SELL/HOLD
-        #df["BSH"] = df.apply(BSH_labeling, axis=1)
 
         
         # Final cleanup and save processed CSV
