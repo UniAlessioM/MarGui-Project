@@ -1,7 +1,8 @@
 import os
 import yfinance as yf
 import pandas as pd
-import numpy as np
+import numpy as n
+from datetime import datetime
 from ta.momentum import RSIIndicator,StochasticOscillator
 from ta.trend import MACD, EMAIndicator, SMAIndicator,ADXIndicator
 from ta.volatility import AverageTrueRange, BollingerBands
@@ -231,7 +232,7 @@ def add_indeces(data):
 #Vengono prelevati i dati delle varie aziente segnate in stocks.txt
 for stock in stocks:
     try:
-        df = yf.download(stock, start="2000-01-01", end="2025-09-20", auto_adjust=False)
+        df = yf.download(stock, start="2000-01-01", end=datetime.strftime(datetime.now(), "%Y-%m-%d"), auto_adjust=False)
         #print(df)
         if df is None or df.empty:
             print(f"  No data for {stock}, skipping.")
