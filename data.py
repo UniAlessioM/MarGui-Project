@@ -1,7 +1,7 @@
 import os
 import yfinance as yf
 import pandas as pd
-import numpy as n
+import numpy as np
 from datetime import datetime
 from ta.momentum import RSIIndicator,StochasticOscillator
 from ta.trend import MACD, EMAIndicator, SMAIndicator,ADXIndicator
@@ -9,10 +9,31 @@ from ta.volatility import AverageTrueRange, BollingerBands
 from ta.momentum import ROCIndicator, WilliamsRIndicator
 from ta.volume import OnBalanceVolumeIndicator, ChaikinMoneyFlowIndicator
 
+threshold=0.003
+
 os.makedirs("csv", exist_ok=True)
 
 with open("stocks.txt", "r") as f:
     stocks = [line.strip() for line in f if line.strip()]
+
+
+
+#Label each day based on the *next day's return*.
+#
+#BUY  -> if the next day's return > +threshold
+#SELL -> if the next day's return < -threshold
+#HOLD -> otherwise
+
+def BSH_predicting_labeling(row):
+
+    if row["Next_Return"] > threshold:
+        return "BUY"
+    
+    if row["Next_Return"] < -threshold:
+        return "SELL"
+    
+    else:
+        return "HOLD"
 
 
 #Criterio dietro alle etichette BUY / SELL / HOLD
@@ -24,7 +45,6 @@ with open("stocks.txt", "r") as f:
 # Sell if (RSI > 70 AND stoch_k > 80) OR (Close < ema50) OR (Close < ema200)
 # Else Hold
 # ----------------------------------------
-
 
 def BSH_labeling(row):
     # BUY:
@@ -51,6 +71,21 @@ def add_indeces(data):
     
     # Calculate % change last value
     data["Return"] = data["Close"].pct_change()
+    data["Month"] = data.index.month
+    # Calculate next-day return
+    data["Next_Return"] = data["Return"].shift(-1)
+    
+    data["Return_mean_5"] = data["Return"].rolling(window=5, min_periods=1).std()
+    data["Return_std_5"] = data["Return"].rolling(window=5, min_periods=1).std()
+    data["Return_mean_10"] = data["Return"].rolling(window=10, min_periods=1).std()
+
+    lags = [1, 3, 7]
+    features = ["Close", "Return"]
+
+    for f in features:
+        for l in lags:
+            data[f"{f}_lag{l}"] = data[f].shift(l)
+
 
     # Simple moving average 20 days
 
@@ -120,6 +155,7 @@ def add_indeces(data):
     data["RSI"] = rsi_14.rsi()
 
 
+
     # Deviazione std degli ultimi 20 giorni
     window = 20
     std = data["Close"].rolling(window=window, min_periods=1).std()
@@ -135,6 +171,9 @@ def add_indeces(data):
     data["Boll_Up"] = data["SMA"] + 2 *std
     data["Boll_Down"] = data["SMA"] - 2 *std
 
+    
+    data["Dist_low_band"] = (data["Close"] - data["Boll_Down"])/data["Close"]
+    data["Dist_up_band"] = (data["Close"] - data["Boll_Up"])/data["Close"]
 
     #Stochastics measures the current price of a stock relative to it’s price range over a specific period of time. It has two components: %K and %D. -
     #%K represents the current closing price of the stock relative to the highest and lowest prices over a defined period and it ranges from O to 100.
@@ -176,6 +215,10 @@ def add_indeces(data):
     data["Lag10"] = data["Close"].pct_change(periods=10) * 100.0
     data["Lag15"] = data["Close"].pct_change(periods=15) * 100.0
     data["Lag50"] = data["Close"].pct_change(periods=50) * 100.0
+
+
+    for col in ["RSI", "EMA50", "EMA200", "%K", "%D"]:
+        data[f"{col}_lag1"] = data[col].shift(1)
 
     r_ema_50_window = 50
     r_ema_20_window = 20
@@ -257,16 +300,21 @@ for stock in stocks:
 
         #Inserimento delle etichette BUY/SELL/HOLD
         df["BSH"] = df.apply(BSH_labeling, axis=1)
+        #Shift predittivo delle etichette.
+        #Il modello dovrà imparare a predirre cosa fare domani
+        #sulla base di ciò che ha visto oggi
+        df["BSH"] = df["BSH"].shift(-1)
 
+        #df["BSH"] = df.apply(BSH_predicting_labeling,axis=1)
 
         # Final cleanup and save processed CSV
         df = df.dropna()
-        df = df[["Close","High","Low","Open","Volume","Vol_EMA200","Vol_EMA50","Return","SMA","EMA50","EMA200",
-                 "RSI","MACD","MACD_Signal","MACD_Hist","Boll_Up","Boll_Down","%K","%D","R_EMA50","R_EMA20",
-                 "Lag1","Lag10","Lag15","Lag50","ADX","+DI","-DI","ATR","BB_pctB","ROC","W%R","BSH"]]
+        #df = df[["Close","High","Low","Open","Volume","Vol_EMA200","Vol_EMA50","Return","SMA","EMA50","EMA200",
+        #         "RSI","MACD","MACD_Signal","MACD_Hist","Boll_Up","Boll_Down","%K","%D","R_EMA50","R_EMA20",
+        #         "Lag1","Lag10","Lag15","Lag50","ADX","+DI","-DI","ATR","BB_pctB","ROC","W%R","BSH"]]
 
         # Conteggio delle etichette BUY/SELL/HOLD usando pandas
-        bsh_counts = df['BSH'].value_counts()
+        bsh_counts = df["BSH"].value_counts()
         print(f"  Conteggio etichette per {stock}:")
         print(bsh_counts)
         print(f"  Totale righe: {len(df)}")
