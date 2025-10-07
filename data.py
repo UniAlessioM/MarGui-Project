@@ -270,7 +270,7 @@ def add_indeces(data):
 
 
 
-    return data
+    return data.drop(columns=["Open", "Low", "High", "Adj Close"])
 
 #Vengono prelevati i dati delle varie aziente segnate in stocks.txt
 for stock in stocks:
@@ -299,11 +299,11 @@ for stock in stocks:
             continue
 
         #Inserimento delle etichette BUY/SELL/HOLD
-        df["BSH"] = df.apply(BSH_labeling, axis=1)
+        #df["BSH"] = df.apply(BSH_labeling, axis=1)
         #Shift predittivo delle etichette.
         #Il modello dovrà imparare a predirre cosa fare domani
         #sulla base di ciò che ha visto oggi
-        df["BSH"] = df["BSH"].shift(-1)
+        #df["BSH"] = df["BSH"].shift(-1)
 
         #df["BSH"] = df.apply(BSH_predicting_labeling,axis=1)
 
@@ -314,11 +314,11 @@ for stock in stocks:
         #         "Lag1","Lag10","Lag15","Lag50","ADX","+DI","-DI","ATR","BB_pctB","ROC","W%R","BSH"]]
 
         # Conteggio delle etichette BUY/SELL/HOLD usando pandas
-        bsh_counts = df["BSH"].value_counts()
-        print(f"  Conteggio etichette per {stock}:")
-        print(bsh_counts)
-        print(f"  Totale righe: {len(df)}")
-        print("-" * 40)
+        #bsh_counts = df["BSH"].value_counts()
+        #print(f"  Conteggio etichette per {stock}:")
+        #print(bsh_counts)
+        #print(f"  Totale righe: {len(df)}")
+        #print("-" * 40)
 
         df.to_csv(f"csv/{stock}_indicators.csv")
         print(f"  Exported processed CSV: csv/{stock}_indicators_processed.csv (rows: {len(df)})")
