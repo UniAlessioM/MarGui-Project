@@ -79,7 +79,7 @@ def add_indeces(data):
     data["Return_std_5"] = data["Return"].rolling(window=5, min_periods=1).std()
     data["Return_mean_10"] = data["Return"].rolling(window=10, min_periods=1).std()
 
-    lags = [1, 3, 7]
+    lags = [1, 3, 7, 14, 20, 30]
     features = ["Close", "Return"]
 
     for f in features:
@@ -275,7 +275,7 @@ def add_indeces(data):
 #Vengono prelevati i dati delle varie aziente segnate in stocks.txt
 for stock in stocks:
     try:
-        df = yf.download(stock, start="2000-01-01", end=datetime.strftime(datetime.now(), "%Y-%m-%d"), auto_adjust=False)
+        df = yf.download(stock, start="2020-01-01", end=datetime.strftime(datetime.now(), "%Y-%m-%d"), auto_adjust=False)
         #print(df)
         if df is None or df.empty:
             print(f"  No data for {stock}, skipping.")
