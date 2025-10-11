@@ -1,4 +1,3 @@
-^GSPC
 AAPL
 NVDA
 KO
