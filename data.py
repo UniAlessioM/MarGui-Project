@@ -9,59 +9,12 @@ from ta.volatility import AverageTrueRange, BollingerBands
 from ta.momentum import ROCIndicator, WilliamsRIndicator
 from ta.volume import OnBalanceVolumeIndicator, ChaikinMoneyFlowIndicator
 
-threshold=0.003
-
 os.makedirs("csv", exist_ok=True)
 
 with open("stocks.txt", "r") as f:
     stocks = [line.strip() for line in f if line.strip()]
 
 
-
-#Label each day based on the *next day's return*.
-#
-#BUY  -> if the next day's return > +threshold
-#SELL -> if the next day's return < -threshold
-#HOLD -> otherwise
-
-def BSH_predicting_labeling(row):
-
-    if row["Next_Return"] > threshold:
-        return "BUY"
-    
-    if row["Next_Return"] < -threshold:
-        return "SELL"
-    
-    else:
-        return "HOLD"
-
-
-#Criterio dietro alle etichette BUY / SELL / HOLD
-
-# ----------------------------------------
-# Condizioni iniziali, poi modificate per testare il dataset
-# 
-# Buy if (ema50 >= ema200) OR (Volume > VOLEMA200)
-# Sell if (RSI > 70 AND stoch_k > 80) OR (Close < ema50) OR (Close < ema200)
-# Else Hold
-# ----------------------------------------
-
-def BSH_labeling(row):
-    # BUY:
-    if (row["EMA50"] >= row["EMA200"] and 
-        row["Volume"] > row["Vol_EMA200"]):  
-        return "BUY"
-    
-    # SELL
-    if ((row["RSI"] > 68 and row["%K"] > 78) or
-        (row["Close"] < row["EMA50"] or row["Close"] < row["EMA200"])):
-            return "SELL"
-    
-    # HOLD
-    else:
-        return "HOLD"
-
-    
 def add_indeces(data):
 
     #Rimozione del livello ridondante dal DataFrame
@@ -69,25 +22,24 @@ def add_indeces(data):
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = data.columns.droplevel(1)
     
-    # Calculate % change last value
+    # Ritorno percentuale sul prezzo di chiusura
     data["Return"] = data["Close"].pct_change()
-    data["Month"] = data.index.month
-    # Calculate next-day return
+
     data["Next_Return"] = data["Return"].shift(-1)
-    
-    data["Return_mean_5"] = data["Return"].rolling(window=5, min_periods=1).std()
-    data["Return_std_5"] = data["Return"].rolling(window=5, min_periods=1).std()
-    data["Return_mean_10"] = data["Return"].rolling(window=10, min_periods=1).std()
+    data["Return_std_5"] = data["Return"].rolling(window=5).std()
+    data["Return_std_10"] = data["Return"].rolling(window=10).std()
+    data["Return_std_20"] = data["Return"].rolling(window=20).std()
 
-    lags = [1, 3, 7]
-    features = ["Close", "Return"]
+    # MACD (Moving Average Convergence Divergence)
+    # In genere si usa insieme all'RSI perché uno compensa i limiti dell'altro
 
-    for f in features:
-        for l in lags:
-            data[f"{f}_lag{l}"] = data[f].shift(l)
+    macd = MACD(close=data["Close"], window_slow=26, window_fast=12, window_sign=9)
+    data["MACD"]        = macd.macd()
+    data["MACD_Signal"] = macd.macd_signal()
+    data["MACD_Hist"]   = macd.macd_diff()
 
 
-    # Simple moving average 20 days
+    # Media mobile semplice a 20 giorni
 
     sma_window = 20
     #per vedere i dati effettivi, dobbiamo accedervi dall'oggetto
@@ -95,7 +47,7 @@ def add_indeces(data):
     ema_obj = SMAIndicator(data["Close"],window=sma_window,fillna=False)
     data["SMA"] = ema_obj.sma_indicator()
 
-    # Exponetial moving average
+    # Medie mobili esponenziali
 
     ema_window1 = 50
     ema_window2 = 200
@@ -106,47 +58,15 @@ def add_indeces(data):
     ema_obj = EMAIndicator(data["Close"],window=ema_window2,fillna=False)
     data["EMA200"] = ema_obj.ema_indicator()
 
-
-    """
-    BUY = Volume > vol.ema200:
-    Interpretazione: Un segnale di acquisto è considerato più forte o convalidato quando il volume 
-    di trading attuale è superiore alla sua media esponenziale a lungo termine (200 periodi).
-    Significato: Questo suggerisce che c'è un interesse significativo e una partecipazione elevata 
-    del mercato nel movimento di prezzo corrente. Se il prezzo sta salendo e il volume è superiore 
-    alla sua EMA200, è un buon segno che gli acquirenti sono in forza e il trend rialzista potrebbe 
-    essere sostenibile.
-    SELL = Volume < vol.ema200:
-    Interpretazione: Un segnale di vendita è considerato più forte o convalidato quando il volume 
-    di trading attuale è inferiore alla sua media esponenziale a lungo termine.
-    Significato: Questo può essere interpretato in diversi modi a seconda del contesto del prezzo:
-    Se il prezzo sta scendendo e il volume è inferiore alla sua EMA200, il trend ribassista potrebbe 
-    essere debole o non avere una forte convinzione.
-    Se il prezzo sta salendo ma il volume è inferiore alla sua EMA200, 
-    potrebbe indicare che il trend rialzista è debole, mancano acquirenti forti e 
-    una potenziale inversione potrebbe essere imminente 
-    (un segnale di "non conferma" per il trend rialzista).
-    """
-
-
     vol_ema_200 = EMAIndicator(data["Volume"],window=ema_window2,fillna=False)
     data["Vol_EMA200"] = vol_ema_200.ema_indicator()
+
     vol_ema_50 =  EMAIndicator(data["Volume"],window=ema_window1,fillna=False)
     data["Vol_EMA50"] = vol_ema_50.ema_indicator()
 
-    # Wheited moving average
+    # Media mobile ponderata
     #data['WMA20'] = data["Close"].rolling(window=window, min_periods=1).apply(
-    #    lambda prices: np.dot(prices, np.arange(1, len(prices)+1))/np.arange(1, len(prices)+1).sum()
-    #   if len(prices) > 0 else np.nan, raw=True)
-    
-    # Relative Strength index (RSI)
-    #Exceeding Fair Value: The stock's price has become unsustainable and is 
-    # trading above what its underlying fundamentals might justify. 
-    #Market Euphoria: A period of high buying interest and optimism, 
-    # sometimes fueled by fear of missing out (FOMO), 
-    # can push prices to seemingly unsustainable levels. 
-    #Potential for a Reversal: An overbought condition signals 
-    # that a pullback or decline in price is likely, 
-    # as investors may start selling to lock in profits. 
+
     RSIwindow = 14
 
     #Ho usato un calcolo standard di libreria per calcolare RSI
@@ -155,18 +75,14 @@ def add_indeces(data):
     data["RSI"] = rsi_14.rsi()
 
 
-
     # Deviazione std degli ultimi 20 giorni
     window = 20
     std = data["Close"].rolling(window=window, min_periods=1).std()
     
-
-
-    # Bollinger Bands
-    # When the price moves close to the upper band (Boll_Up), 
-    # it may indicate overbought conditions, suggesting a potential price reversal to the downside.
-    # Conversely, when the price approaches the lower band (Boll_Down), 
-    # it may indicate oversold conditions, suggesting a potential price reversal to the upside.
+    # Bande di Bollinger
+    # Quando il prezzo si avvicina alla banda superiore (Boll_Up) può indicare condizioni di ipercomprato
+    # e una possibile inversione al ribasso. Viceversa, vicino alla banda inferiore (Boll_Down) può indicare
+    # condizioni di ipervenduto e una potenziale inversione al rialzo.
     
     data["Boll_Up"] = data["SMA"] + 2 *std
     data["Boll_Down"] = data["SMA"] - 2 *std
@@ -175,11 +91,11 @@ def add_indeces(data):
     data["Dist_low_band"] = (data["Close"] - data["Boll_Down"])/data["Close"]
     data["Dist_up_band"] = (data["Close"] - data["Boll_Up"])/data["Close"]
 
-    #Stochastics measures the current price of a stock relative to it’s price range over a specific period of time. It has two components: %K and %D. -
-    #%K represents the current closing price of the stock relative to the highest and lowest prices over a defined period and it ranges from O to 100.
-    #When %K is near 0, it suggests the stock is trading near the lower end of its price range, indicating an oversold condition. When %K is near 100, it
-    #suggests the stock is trading near the upper end of its price range, indicating an overbought condition. - %D is the smoothed version of %K and is
-    #often represented as moving average of %K.
+    # Lo Stochastic misura il prezzo corrente rispetto all'intervallo di prezzi in un certo periodo.
+    # Ha due componenti: %K e %D. %K rappresenta la posizione del prezzo di chiusura rispetto al minimo/massimo
+    # del periodo e varia da 0 a 100. Valori vicini a 0 indicano area di ipervenduto (vicino ai minimi del range),
+    # valori vicini a 100 indicano area di ipercomprato (vicino ai massimi del range). %D è la versione smussata di %K
+    # ed è spesso calcolata come media mobile di %K.
 
     # window: periodicità per %K (solitamente 14)
     # smooth_window: periodicità per %D (solitamente 3)
@@ -198,27 +114,6 @@ def add_indeces(data):
     # Calcola %D (stoch_d)
     data['%D'] = stoch_oscillator.stoch_signal()
 
-    #Feature engineering: 
-    # Ritorni traslati nel tempo ("Lagged") e Media esp. mobile sui ritorni
-    # Apparentemente EMA viene usata per le predizioni poichè è l'indice
-    # che riesce a fornire un peso maggiore ai dati di mercato più recenti,
-    # perciò si predilige all'uso del semplice return
-
-    """
-    For prediction models it is better to avoid the "leaking" problem where one feeds the model
-    with the same parameters used for the data labeling. So, in order to avoid this problem,
-    predictions will be made used other types of indices, like the EMA on returns and the price Lag.
-    Of course, it also depends on the strategy used to label the dataset.
-    """
-
-    data["Lag1"] = data["Close"].pct_change(periods=1) * 100.0       
-    data["Lag10"] = data["Close"].pct_change(periods=10) * 100.0
-    data["Lag15"] = data["Close"].pct_change(periods=15) * 100.0
-    data["Lag50"] = data["Close"].pct_change(periods=50) * 100.0
-
-
-    for col in ["RSI", "EMA50", "EMA200", "%K", "%D"]:
-        data[f"{col}_lag1"] = data[col].shift(1)
 
     r_ema_50_window = 50
     r_ema_20_window = 20
@@ -231,97 +126,123 @@ def add_indeces(data):
     data["R_EMA20"] = r_ema_20.ema_indicator()
     data["R_EMA50"] = r_ema_50.ema_indicator()
 
-    # --- Trend strength ---
+   
     adx = ADXIndicator(high=data["High"], low=data["Low"], close=data["Close"], window=14)
     data["ADX"] = adx.adx()
     data["+DI"] = adx.adx_pos()
     data["-DI"] = adx.adx_neg()
 
-    # --- Volatility ---
     atr = AverageTrueRange(high=data["High"], low=data["Low"], close=data["Close"], window=14)
     data["ATR"] = atr.average_true_range()
 
     bb = BollingerBands(close=data["Close"], window=20, window_dev=2)
     data["BB_pctB"] = (data["Close"] - bb.bollinger_lband()) / (bb.bollinger_hband() - bb.bollinger_lband())
 
-    # --- Momentum ---
     roc = ROCIndicator(close=data["Close"], window=10)
     data["ROC"] = roc.roc()
 
     wr = WilliamsRIndicator(high=data["High"], low=data["Low"], close=data["Close"], lbp=14)
     data["W%R"] = wr.williams_r()
 
+    obv = OnBalanceVolumeIndicator(close=data["Close"], volume=data["Volume"])
+    data["OBV"] = obv.on_balance_volume()
+
+    cmf = ChaikinMoneyFlowIndicator(high=data["High"], low=data["Low"], close=data["Close"], volume=data["Volume"], window=20)
+    data["CMF"] = cmf.chaikin_money_flow()
+
+
+    data["EMA_ratio"] = data["EMA50"] / data["EMA200"] - 1
+
+    data["MACD_norm"] = data["MACD"] / data["Close"]
+
+
+    data["RSI_diff"] = data["RSI"] - data["RSI"].rolling(14).mean()
+    data["DI_diff"] = data["+DI"] - data["-DI"]
+
+    # Questi catturano il momentum o la velocità di cambiamento dell'indicatore.
+    data["SMA_slope"] = data["SMA"].diff()
+    data["EMA50_slope"] = data["EMA50"].diff()
+    data["EMA200_slope"] = data["EMA200"].diff()
+    data["RSI_slope"] = data["RSI"].diff()
+    data["MACD_slope"] = data["MACD"].diff()
+    data["%K_slope"] = data["%K"].diff()
+    data["%D_slope"] = data["%D"].diff()
+    data["ATR_slope"] = data["ATR"].diff()
+    data["OBV_slope"] = data["OBV"].diff()
+    data["ADX_slope"] = data["ADX"].diff()
+
+
+    #Valori Booleani Semplici
+
+    # Crossover EMA breve/lunga: Positiva se EMA50 > EMA200
+    # Hai già "EMA_ratio", questo è un modo diverso per vederlo o integrarlo.
+    data["EMA_crossover_signal"] = np.where(data["EMA50"] > data["EMA200"], 1, 0)
     
-    # Moving Average Convergence Divergence
-    # Solitamente è bene usare RSI e MACD insieme poichè l'uno "aggiusta il tiro" dell'altro
+    # Distanza del prezzo dalla SMA: Percentuale sopra/sotto la media
+    data["Price_vs_SMA_pct"] = (data["Close"] - data["SMA"]) / data["SMA"]
+
+    # Posizione dell'RSI rispetto ai livelli di ipercomprato/ipervenduto
+    data["RSI_overbought"] = np.where(data["RSI"] > 70, 1, 0)
+    data["RSI_oversold"] = np.where(data["RSI"] < 30, 1, 0)
+
+    # Posizione dello Stochastic rispetto ai livelli di ipercomprato/ipervenduto
+    data["Stoch_overbought"] = np.where(data["%K"] > 80, 1, 0)
+    data["Stoch_oversold"] = np.where(data["%K"] < 20, 1, 0)
+
+    # MACD crossover (la linea MACD incrocia la linea Signal)
+    # 1 se MACD_Hist è positivo (MACD > Signal), -1 se negativo, 0 se circa nullo
+    # Utile come segnale di momentum
+    data["MACD_crossover_signal"] = np.where(data["MACD_Hist"] > 0, 1, np.where(data["MACD_Hist"] < 0, -1, 0))
+
+    # Tendenza del Volume: Volume corrente vs media mobile del volume
+    data["Volume_vs_EMA50_Vol_pct"] = (data["Volume"] - data["Vol_EMA50"]) / data["Vol_EMA50"]
+    
+    # Range di prezzo normalizzato: ampiezza giornaliera in relazione all'ATR
+    data["Daily_Range_vs_ATR"] = (data["High"] - data["Low"]) / data["ATR"]
 
 
-    macd = MACD(close=data["Close"], window_slow=26, window_fast=12, window_sign=9)
-    data["MACD"]        = macd.macd()
-    data["MACD_Signal"] = macd.macd_signal()
-    data["MACD_Hist"]   = macd.macd_diff()
+    # Ritorni traslati nel tempo ("lag") e medie esponenziali sui ritorni
+    # Le EMA sono utili in predizione perché pesano maggiormente i dati più recenti
+    # rispetto ai ritorni semplici
 
-    # --- Volume-based ---
-    #obv = OnBalanceVolumeIndicator(close=data["Close"], volume=data["Volume"])
-    #data["OBV"] = obv.on_balance_volume()
+    lags = [1, 3, 7, 14, 32]
+    features = ["Close", "Return"]
 
-    #cmf = ChaikinMoneyFlowIndicator(high=data["High"], low=data["Low"], close=data["Close"], volume=data["Volume"], window=20)
-    #data["CMF"] = cmf.chaikin_money_flow()
-
-
+    for f in features:
+        for l in lags:
+            data[f"{f}_lag{l}"] = data[f].shift(l)
+        
+    data["MACD_lag1"] = data["MACD"].shift(1)
+    data["ATR_lag1"] = data["ATR"].shift(1)
+    data["BB_pctB_lag1"] = data["BB_pctB"].shift(1)
+    data["ROC_lag1"] = data["ROC"].shift(1)
+    data["W%R_lag1"] = data["W%R"].shift(1)
+    data["OBV_lag1"] = data["OBV"].shift(1)
+    data["CMF_lag1"] = data["CMF"].shift(1)
 
     return data
 
-#Vengono prelevati i dati delle varie aziente segnate in stocks.txt
+# Vengono prelevati i dati delle varie aziende elencate in stocks.txt
 for stock in stocks:
     try:
-        df = yf.download(stock, start="2000-01-01", end=datetime.strftime(datetime.now(), "%Y-%m-%d"), auto_adjust=False)
+        df = yf.download(stock, start="2015-01-01", end=datetime.strftime(datetime.now(), "%Y-%m-%d"), auto_adjust=False)
         #print(df)
         if df is None or df.empty:
             print(f"  No data for {stock}, skipping.")
             continue
 
-        # Add indicators
+    # Aggiunge gli indicatori tecnici
         df = add_indeces(df)
-
-        # Data quality: drop rows where Close is NaN (early)
-        initial_rows = len(df)
-        close_nan_count = df['Close'].isna().sum()
-        df = df.dropna(subset=['Close'])
-        print(f"  Removed {close_nan_count} rows with NaN Close values")
-
-        # Remove rows where more than 50% of columns are NaN
-        df = df.dropna(thresh=int(len(df.columns) * 0.5))
-        print(f"  Kept {len(df)}/{initial_rows} rows after cleaning")
 
         if len(df) < 100:
             print(f"  Warning: Only {len(df)} rows for {stock}, skipping")
             continue
 
-        #Inserimento delle etichette BUY/SELL/HOLD
-        df["BSH"] = df.apply(BSH_labeling, axis=1)
-        #Shift predittivo delle etichette.
-        #Il modello dovrà imparare a predirre cosa fare domani
-        #sulla base di ciò che ha visto oggi
-        df["BSH"] = df["BSH"].shift(-1)
-
-        #df["BSH"] = df.apply(BSH_predicting_labeling,axis=1)
-
-        # Final cleanup and save processed CSV
-        df = df.dropna()
-        #df = df[["Close","High","Low","Open","Volume","Vol_EMA200","Vol_EMA50","Return","SMA","EMA50","EMA200",
-        #         "RSI","MACD","MACD_Signal","MACD_Hist","Boll_Up","Boll_Down","%K","%D","R_EMA50","R_EMA20",
-        #         "Lag1","Lag10","Lag15","Lag50","ADX","+DI","-DI","ATR","BB_pctB","ROC","W%R","BSH"]]
-
-        # Conteggio delle etichette BUY/SELL/HOLD usando pandas
-        bsh_counts = df["BSH"].value_counts()
-        print(f"  Conteggio etichette per {stock}:")
-        print(bsh_counts)
-        print(f"  Totale righe: {len(df)}")
-        print("-" * 40)
-
+    # Pulizia finale e salvataggio del CSV elaborato
+        df.dropna(inplace=True)
+    
         df.to_csv(f"csv/{stock}_indicators.csv")
-        print(f"  Exported processed CSV: csv/{stock}_indicators_processed.csv (rows: {len(df)})")
+        print(f"  Exported processed CSV: csv/{stock}_indicators_processed.csv (rows: {len(df)})\n")
 
     except Exception as e:
         print(f"Error processing {stock}: {e}")
