@@ -25,11 +25,6 @@ def add_indeces(data):
     # Ritorno percentuale sul prezzo di chiusura
     data["Return"] = data["Close"].pct_change()
 
-    data["Next_Return"] = data["Return"].shift(-1)
-    data["Return_std_5"] = data["Return"].rolling(window=5).std()
-    data["Return_std_10"] = data["Return"].rolling(window=10).std()
-    data["Return_std_20"] = data["Return"].rolling(window=20).std()
-
     # MACD (Moving Average Convergence Divergence)
     # In genere si usa insieme all'RSI perché uno compensa i limiti dell'altro
 
@@ -49,20 +44,14 @@ def add_indeces(data):
 
     # Medie mobili esponenziali
 
-    ema_window1 = 50
-    ema_window2 = 200
+    ema_window1 = 20
     #per vedere i dati effettivi, dobbiamo accedervi dall'oggetto
     #creato dalla funzione EMAIndicator
     ema_obj = EMAIndicator(data["Close"],window=ema_window1,fillna=False)
-    data["EMA50"] = ema_obj.ema_indicator()
-    ema_obj = EMAIndicator(data["Close"],window=ema_window2,fillna=False)
-    data["EMA200"] = ema_obj.ema_indicator()
-
-    vol_ema_200 = EMAIndicator(data["Volume"],window=ema_window2,fillna=False)
-    data["Vol_EMA200"] = vol_ema_200.ema_indicator()
+    data["EMA20"] = ema_obj.ema_indicator()
 
     vol_ema_50 =  EMAIndicator(data["Volume"],window=ema_window1,fillna=False)
-    data["Vol_EMA50"] = vol_ema_50.ema_indicator()
+    data["Vol_EMA20"] = vol_ema_50.ema_indicator()
 
     # Media mobile ponderata
     #data['WMA20'] = data["Close"].rolling(window=window, min_periods=1).apply(
@@ -114,17 +103,12 @@ def add_indeces(data):
     # Calcola %D (stoch_d)
     data['%D'] = stoch_oscillator.stoch_signal()
 
-
-    r_ema_50_window = 50
     r_ema_20_window = 20
-
-    r_ema_50 = EMAIndicator(data["Return"],window=r_ema_50_window,fillna=False)
     r_ema_20 = EMAIndicator(data["Return"],window=r_ema_20_window,fillna=False)
 
 
     # Media esponenziale mobile calcolata sui ritorni.
     data["R_EMA20"] = r_ema_20.ema_indicator()
-    data["R_EMA50"] = r_ema_50.ema_indicator()
 
    
     adx = ADXIndicator(high=data["High"], low=data["Low"], close=data["Close"], window=14)
@@ -150,9 +134,6 @@ def add_indeces(data):
     cmf = ChaikinMoneyFlowIndicator(high=data["High"], low=data["Low"], close=data["Close"], volume=data["Volume"], window=20)
     data["CMF"] = cmf.chaikin_money_flow()
 
-
-    data["EMA_ratio"] = data["EMA50"] / data["EMA200"] - 1
-
     data["MACD_norm"] = data["MACD"] / data["Close"]
 
 
@@ -161,8 +142,6 @@ def add_indeces(data):
 
     # Questi catturano il momentum o la velocità di cambiamento dell'indicatore.
     data["SMA_slope"] = data["SMA"].diff()
-    data["EMA50_slope"] = data["EMA50"].diff()
-    data["EMA200_slope"] = data["EMA200"].diff()
     data["RSI_slope"] = data["RSI"].diff()
     data["MACD_slope"] = data["MACD"].diff()
     data["%K_slope"] = data["%K"].diff()
@@ -175,11 +154,9 @@ def add_indeces(data):
     #Valori Booleani Semplici
 
     # Crossover EMA breve/lunga: Positiva se EMA50 > EMA200
-    # Hai già "EMA_ratio", questo è un modo diverso per vederlo o integrarlo.
-    data["EMA_crossover_signal"] = np.where(data["EMA50"] > data["EMA200"], 1, 0)
     
     # Distanza del prezzo dalla SMA: Percentuale sopra/sotto la media
-    data["Price_vs_SMA_pct"] = (data["Close"] - data["SMA"]) / data["SMA"]
+    #data["Price_vs_SMA_pct"] = (data["Close"] - data["SMA"]) / data["SMA"]
 
     # Posizione dell'RSI rispetto ai livelli di ipercomprato/ipervenduto
     data["RSI_overbought"] = np.where(data["RSI"] > 70, 1, 0)
@@ -193,39 +170,37 @@ def add_indeces(data):
     # 1 se MACD_Hist è positivo (MACD > Signal), -1 se negativo, 0 se circa nullo
     # Utile come segnale di momentum
     data["MACD_crossover_signal"] = np.where(data["MACD_Hist"] > 0, 1, np.where(data["MACD_Hist"] < 0, -1, 0))
-
-    # Tendenza del Volume: Volume corrente vs media mobile del volume
-    data["Volume_vs_EMA50_Vol_pct"] = (data["Volume"] - data["Vol_EMA50"]) / data["Vol_EMA50"]
     
     # Range di prezzo normalizzato: ampiezza giornaliera in relazione all'ATR
-    data["Daily_Range_vs_ATR"] = (data["High"] - data["Low"]) / data["ATR"]
+    #data["Daily_Range_vs_ATR"] = (data["High"] - data["Low"]) / data["ATR"]
 
 
     # Ritorni traslati nel tempo ("lag") e medie esponenziali sui ritorni
     # Le EMA sono utili in predizione perché pesano maggiormente i dati più recenti
     # rispetto ai ritorni semplici
 
-    lags = [1, 3, 7, 14, 32]
-    features = ["Close", "Return"]
+    #lags = [1, 3, 7, 14]
+    #features = ["Close", "Return"]
 
-    for f in features:
-        for l in lags:
-            data[f"{f}_lag{l}"] = data[f].shift(l)
-        
-    data["MACD_lag1"] = data["MACD"].shift(1)
-    data["ATR_lag1"] = data["ATR"].shift(1)
-    data["BB_pctB_lag1"] = data["BB_pctB"].shift(1)
-    data["ROC_lag1"] = data["ROC"].shift(1)
-    data["W%R_lag1"] = data["W%R"].shift(1)
-    data["OBV_lag1"] = data["OBV"].shift(1)
-    data["CMF_lag1"] = data["CMF"].shift(1)
+    #for f in features:
+    #    for l in lags:
+    #        data[f"{f}_lag{l}"] = data[f].shift(l)
+    #    
+    #data["MACD_lag1"] = data["MACD"].shift(1)
+    #data["ATR_lag1"] = data["ATR"].shift(1)
+    #data["BB_pctB_lag1"] = data["BB_pctB"].shift(1)
+    #data["ROC_lag1"] = data["ROC"].shift(1)
+    #data["W%R_lag1"] = data["W%R"].shift(1)
+    #data["OBV_lag1"] = data["OBV"].shift(1)
+    #data["CMF_lag1"] = data["CMF"].shift(1)
 
-    return data
+    return data.drop(columns=["Adj Close"])
 
 # Vengono prelevati i dati delle varie aziende elencate in stocks.txt
+# Current date values: datetime.strftime(datetime.now(), "%Y-%m-%d")
 for stock in stocks:
     try:
-        df = yf.download(stock, start="2015-01-01", end=datetime.strftime(datetime.now(), "%Y-%m-%d"), auto_adjust=False)
+        df = yf.download(stock, start="2023-01-01", end="2025-01-01", auto_adjust=False)
         #print(df)
         if df is None or df.empty:
             print(f"  No data for {stock}, skipping.")
