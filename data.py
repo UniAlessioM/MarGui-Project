@@ -194,13 +194,74 @@ def add_indeces(data):
     #data["OBV_lag1"] = data["OBV"].shift(1)
     #data["CMF_lag1"] = data["CMF"].shift(1)
 
+    # --- FEATURE AVANZATE --- #
+
+        # 1. FEATURE DI INTERAZIONE 
+    # L'idea è che la combinazione di due segnali sia più potente dei segnali singoli.
+    # Un RSI alto con volumi in crescita è un segnale molto diverso da un RSI alto con volumi deboli.
+
+    # Calcoliamo prima la variazione percentuale del volume
+    data['Vol_pct_change'] = data['Volume'].pct_change()
+
+    # Interazione: RSI * Variazione Volume. Valori alti indicano forte momentum con supporto del volume.
+    data['RSI_x_Vol_Change'] = data['RSI'] * data['Vol_pct_change']
+
+
+    #  2. FEATURE DI NORMALIZZAZIONE CONTESTUALE 
+    # L'obiettivo è rendere un indicatore confrontabile nel tempo e tra diversi asset.
+    # Un ATR di 0.5$ su un'azione da 10$ è alta volatilità. Su un'azione da 500$ è quasi nulla.
+
+    # ATR normalizzato dal prezzo di chiusura (Volatilità Percentuale)
+    # Ci dice l'ampiezza media del movimento giornaliero come percentuale del prezzo.
+    data['ATR_pct'] = (data['ATR'] / data['Close']) * 100
+
+
+    #  3. INDICATORI DI SECONDO LIVELLO 
+    # Calcoliamo indicatori su altri indicatori per catturare il loro "momentum" o "trend".
+
+    # Media Mobile dell'RSI. Se RSI > RSI_SMA10, il momentum sta accelerando al rialzo.
+    data['RSI_SMA15'] = data['RSI'].rolling(window=15).mean()
+
+    # Distanza dell'RSI dalla sua media mobile. Segnala accelerazioni/decelerazioni del momentum.
+    data['RSI_vs_SMA'] = data['RSI'] - data['RSI_SMA15']
+
+    # Deviazione Standard del MACD Histogram. Misura la "volatilità del momentum".
+    # Valori alti indicano che il momentum sta cambiando molto rapidamente.
+    data['MACD_Hist_Std20'] = data['MACD_Hist'].rolling(window=20).std()
+
+
+
     return data.drop(columns=["Adj Close"])
 
-# Vengono prelevati i dati delle varie aziende elencate in stocks.txt
-# Current date values: datetime.strftime(datetime.now(), "%Y-%m-%d")
+
+start = "2018-01-01"
+end = "2025-01-01"
+
+print("Fetching and adding market index features (S&P 500)...")
+
+
+# 1. Scarica i dati dell'indice S&P 500 (^GSPC)
+sp = yf.download("^GSPC", start=start, end=end, auto_adjust=False)
+
+
+if sp is not None and not sp.empty:
+    if isinstance(sp.columns, pd.MultiIndex):
+        sp.columns = sp.columns.droplevel(1)
+    sp['SP_Return'] = sp['Close'].pct_change()
+    sp['SP_RSI'] = RSIIndicator(close=sp['Close'], window=14).rsi()
+    sp['SP_SMA20'] = SMAIndicator(close=sp['Close'], window=20).sma_indicator()
+    sp['SP_Dist_SMA'] = (sp['Close'] - sp['SP_SMA20']) / sp['SP_SMA20']
+    sp500_features = sp[['SP_Return', 'SP_RSI', 'SP_Dist_SMA']]
+    
+
+else:
+    print("Failed to fetch S&P 500 data.")
+
+
+
 for stock in stocks:
     try:
-        df = yf.download(stock, start="2023-01-01", end="2025-01-01", auto_adjust=False)
+        df = yf.download(stock, start=start, end=end, auto_adjust=False)
         #print(df)
         if df is None or df.empty:
             print(f"  No data for {stock}, skipping.")
@@ -208,7 +269,9 @@ for stock in stocks:
 
     # Aggiunge gli indicatori tecnici
         df = add_indeces(df)
-
+        if(sp is not None and not sp.empty):
+            df = df.join(sp500_features)
+        
         if len(df) < 100:
             print(f"  Warning: Only {len(df)} rows for {stock}, skipping")
             continue
