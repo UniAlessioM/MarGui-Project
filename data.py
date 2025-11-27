@@ -229,19 +229,16 @@ def add_indeces(data):
     # Valori alti indicano che il momentum sta cambiando molto rapidamente.
     data['MACD_Hist_Std20'] = data['MACD_Hist'].rolling(window=20).std()
 
-
-
     return data.drop(columns=["Adj Close"])
-
 
 start = "2018-01-01"
 end = "2025-01-01"
 
-print("Fetching and adding market index features (S&P 500)...")
+print("Fetching and adding market index features (SP500-45)...")
 
 
-# 1. Scarica i dati dell'indice S&P 500 (^GSPC)
-sp = yf.download("^GSPC", start=start, end=end, auto_adjust=False)
+# Scarica i dati di un indice di settore
+sp = yf.download("^SP500-45", start=start, end=end, auto_adjust=False)
 
 
 if sp is not None and not sp.empty:
@@ -255,7 +252,7 @@ if sp is not None and not sp.empty:
     
 
 else:
-    print("Failed to fetch S&P 500 data.")
+    print("Failed to fetch SP500-45 data.")
 
 
 
