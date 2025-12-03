@@ -2,3 +2,4 @@ models/
 csv/
 working/
 diary/
+__pycache__/
