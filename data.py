@@ -232,7 +232,7 @@ def add_indeces(data):
     return data.drop(columns=["Adj Close"])
 
 start = "2018-01-01"
-end = "2025-11-20"
+end = "2025-11-30"
 
 print("Fetching and adding market index features (SP500-45)...")
 
