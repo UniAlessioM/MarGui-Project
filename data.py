@@ -1,13 +1,11 @@
 import os
 import yfinance as yf
-from indeces import add_indeces
-from indeces import start, end
+from TickerTracker.indeces import add_indeces
+from TickerTracker.indeces import start, end
 os.makedirs("csv", exist_ok=True)
 
 with open("stocks.txt", "r") as f:
     stocks = [line.strip() for line in f if line.strip()]
-
-
 
 for stock in stocks:
     try:
