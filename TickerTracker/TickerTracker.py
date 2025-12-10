@@ -1,45 +1,18 @@
 from flask import Flask, render_template
 import yfinance as yf
-import plotly
 import plotly.graph_objs as go
 from plotly.offline import plot as plotly_plot
-import json
 import pandas as pd
 import numpy as np
 import joblib
 import xgboost as xgb
-import os
-
-import importlib
-import sys, os
-
-# Problemi con l'import di alcuni moduli personalizzati.
-# Risolti tramite os e sys e path
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
-from pathlib import Path
-
-import indeces
-importlib.reload(indeces)
 from indeces import add_indeces
-
-
-THIS_FILE = Path(__file__).resolve()
-PROJECT_ROOT = THIS_FILE.parent.parent   
-
-MODEL_PATH = PROJECT_ROOT / "models" / "AAPL.joblib"
-MODEL_PATH = str(MODEL_PATH)
-
-print("CWD:", Path.cwd())
-print("Resolved MODEL_PATH:", MODEL_PATH)
 
 app = Flask(__name__)
 
 TICKER = "AAPL"
 
-
-bundle = joblib.load(MODEL_PATH)
+bundle = joblib.load(f"model/{TICKER}.joblib")
 
 FEATURES_LIST = bundle["features"]
 WINDOW_SIZE = 40      
@@ -47,7 +20,6 @@ FLOOR_PROB = 0.40
 DAYS_TO_CHECK =  5
 DAYS_TO_SHOW = 30
 BEST_K = bundle["aggressive"]
-
 
 @app.route('/')
 def index():
@@ -196,8 +168,7 @@ def index():
 
         except Exception as e:
             print(f"Errore durante la predizione: {e}")
-            predictions_data = [] 
-    print(predictions_data)    
+            predictions_data = []     
 
     # Nella stampa vogliamo vedere la predizione di oggi in cima
     predictions_data.reverse()
@@ -205,4 +176,4 @@ def index():
     return render_template('index.html', line_div=line_div, candle_div=candle_div, predictions=predictions_data, ticker=TICKER)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(debug=True, host="0.0.0.0", port=5000)
