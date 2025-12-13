@@ -1,0 +1,6 @@
+models/
+csv/
+working/
+diary/
+__pycache__/
+TickerTracker/model/
