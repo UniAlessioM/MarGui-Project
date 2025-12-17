@@ -204,6 +204,7 @@ Tuttavia, sono rimasti molte altre strade da esplorare per migliorare ulteriorme
     * Cercano online abbiamo trovato questo [articolo](https://www.itm-conferences.org/articles/itmconf/abs/2022/04/itmconf_icacc2022_03060/itmconf_icacc2022_03060.html) che confronta vari modelli per la regresione del prezzo di chiusura di Apple, e si vede come **Prophet** è il peggiore tra tutti i modelli considerati nello studio, questo unito a opinioni online che lo sconsigliano per questo tipo di problema ci ha fatto scartare questa opzione questo task, allora lo abbiamo evitato.
     
     * Abbiamo provato a vedere se **ARIMA** invece aveva del potenziale, abbiamo addestrato 5 modelli distiniti per la previsione il prezzo di close a distanza di 1,2,3,4 e 5 giorni, poi considerato il close del giorno corrente, ci abbiamo applicato la regola della double barrier per trasformarlo in un classificatore. Quello che abbiamo notato è che il risutato dipende molto dal peso della parte autoregressiva, differenziale e media mobile (P, D, Q), e passa da essere estremamente aggressivo (molti BUY) a estremamente conservativo (solo SELL), abbiamo trovato un punto di mezzo con la terna (1,1,0):
+
     ![Matrice di confusione ARIMA](./img/cm_arima.png) 
 
     Abbiamo anche fatto un testbench simile a quello fatto per XGBoost con un capitale inizale di 1000 e commissioni del 0.2% e il risultato è stato:
@@ -216,13 +217,15 @@ Tuttavia, sono rimasti molte altre strade da esplorare per migliorare ulteriorme
     ![Trading ARIMA](./img/trading_arima.png)
 
     * Inoltra abbiamo esplorato anche LSTM, che possibile esamio di rete neurale, che si è rivelata più performante di ARIMA e XGBoost, applicandoci solo gli stessi miglioramenti pensati per XGBoost (feature selection e soglia dinamica). Nonostante questi si sono rilevalati sufficenti per ottenere dei risultati migliori, quindi un ulteriore studio su LSTM potrebbe portare a risultati ancora migliori.
+
     ![Matrice di confusione LSTM](./img/cm_lstm.png)
 
     Anche in questo caso abbiamo fatto un testbench simile a quello fatto per XGBoost con un capitale inizale di 1000 e commissioni del 0.2% e il risultato è stato:
-
+    \newpage
+    
     |Strategia|Capitale finale|Rendimento|
     |---|---|---|
-    |Buy and Hold| 1220.71 | 22.071% |
-    |LSTM | 1253.45 | 25.345% | 
+    |Buy and Hold| $1220.71 | 22.071% |
+    |LSTM | $1390.29 | 39.029% |
 
     ![Trading LSTM](./img/trading_lstm.png) 
