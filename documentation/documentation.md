@@ -110,6 +110,7 @@ Classification Report (Test Set):
                 precision    recall  f1-score   support
             1       0.52      0.23      0.32       120
             0       0.61      0.85      0.71       170
+
      accuracy                           0.59       290
     macro avg       0.56      0.54      0.52       290
  weighted avg       0.57      0.59      0.55       290 
@@ -119,16 +120,18 @@ con la seguente matrice di confusione: \newpage
 
 ![Matrice di confusione](./img/cm.png)
 
-* Poi abbiamo visto anche confrontato il modello con altre strategie, in particolare abbiamo idealizzato una strategia basata sulle azioni del modello
-    * L'idea è di sfruttare la definizione del target per fare trading, quindi quando il modello predice un'etichetta positiva (1) e non si hanno azioni si compra il maggior numero di azioni disponibili con il capitale a disposizione, poi se per 5 giorni di fila il modello predice un'etichetta negativa (0) si vendono tutte le azioni possedute al 5 giorno, questo perchè si immaginamo che il modello sia corretti e quindi avendo 5 etichette negative consecuitve non ha più senso tenere le azioni, perchè non ci saranno variazioni positive nei prossimi giorni, però se nel intervallo di 5 giorni il modello predice un'etichetta positiva si continua a tenere le azioni e resettiamo il numero di giorni da aspettare.
+* Poi abbiamo visto anche confrontato il modello con altre strategie, in particolare abbiamo idealizzato una strategia che sfrutta le azioni del modello, analizzata più in dettaglio [sotto](#dettagli-tecnici-implementativi-technical-implementation-details)
+    
 
-Quello che abbiamo ottenuto sul periodo che va da 2024-09-26 a 2025-11-28, partendo da un buget di 1000$ è:
+Quello che abbiamo ottenuto sul periodo che va da 2024-09-26 a 2025-11-28, partendo da un buget di 1000$ con commissioni al 0.2% è:
 
 |Strategia|Capitale finale|Rendimento|
 |---|---|---|
-|Buy and Hold| 1225.61 | 22.56% |
-|Trend Chaser| 1159.63 | 15.96% |
-|Modello | 1345.96 | 34.60% |
+|Buy and Hold| 1220.71 | 22.071% |
+|Trend Chaser| 1059.72 | 5.973% |
+|Modello | 1277.693 | 27.769% |
+
+\newpage
 
 ![Periodo testing](./img/trading.png)
 
@@ -151,7 +154,7 @@ Il progetto è stato sviluppato in **Python 3.12.3**, utilizzando **uv** come ge
           if model_state["shares"] == 0:
               # Buy completo
               model_state["shares"] += (model_state["cash"] * 
-                                          (1 - commission_interest)) / price
+                                (1 - commission_interest)) / price
               model_state["cash"] = 0.0
               model_state["streak"] = 0
           
@@ -160,7 +163,7 @@ Il progetto è stato sviluppato in **Python 3.12.3**, utilizzando **uv** come ge
           if model_state["shares"] != 0 and (model_state["streak"] > 5):
               # Vendita totale
               model_state["cash"] += model_state["shares"] * price * 
-                                      (1 - commission_interest)
+                                    (1 - commission_interest)
               model_state["shares"] = 0.0
               model_state["streak"] = 0
   
@@ -179,8 +182,6 @@ Il progetto è stato sviluppato in **Python 3.12.3**, utilizzando **uv** come ge
 - Per lo sviluppo dell’applicativo è stato utilizzato **Flask**, insieme a **CSS personalizzato** e **Bootstrap** per la parte grafica.
 - Ulteriori dettagli relativi alla struttura del progetto e allo scopo dei singoli file sono disponibili nel file `./README.md`.
 
----
-
 ## Difficoltà incontrate e soluzioni (Challenges Encountered and Solutions)
 
 - **Elevata rumorosità del target**: il problema è stato affrontato tramite la definizione del target mediante il **Double Barrier Method**.
@@ -191,8 +192,37 @@ Il progetto è stato sviluppato in **Python 3.12.3**, utilizzando **uv** come ge
 
 ## Eventuali miglioramenti futuri (Possible Future Improvements)
 
-L’analisi si è concentrata principalmente su modelli già affrontati nel corso; tuttavia, esistono diverse alternative che potrebbero essere esplorate in futuro:
+In questo progetto è stato esplorato il problema del classificatore binario per la previsione del prezzo di chiusura di un titolo azionario, affrontando e risolvendo problemi come quelli visti sopra.
 
-- **PROPHET di Meta**, che da quanto emerso in letteratura online risulta non particolarmente adatto a questo specifico obiettivo (allegare riferimenti).
-- **ARIMA**, adattato come classificatore binario mediante l’addestramento di cinque modelli distinti per la previsione a 1, 2, 3, 4 e 5 giorni, seguiti dall’applicazione del Double Barrier Method. I risultati ottenuti non hanno tuttavia superato quelli di XGBoost (allegare risultati ARIMA).
-- **LSTM**, esplorato in via preliminare: anche con ipotesi simili a quelle adottate per XGBoost, sono stati ottenuti risultati promettenti. Un’analisi più approfondita e una migliore ottimizzazione potrebbero portare a prestazioni superiori (allegare risultati LSTM).
+Tuttavia, sono rimasti molte altre strade da esplorare per migliorare ulteriormente il progetto, come:
+
+* Introduzione di una metrica di valutazione del sudetto _investor sentiment_: perchè se correliamo, nel caso di Apple, il sentimento delle persone postumo hai famosi eventi che vengono tenuti annualmente, si nota come all'annuncio di AppleSilicon ci sia stato un picco e invece subito dopo l'annuncio del iPhone 15 si sia avuto un calo. Quindi l'idea sarebbe quella di introdurre una metrica che valuti il sentiment delle persone/investor sui social e vederne la correlazione con il prezzo.
+
+* Lavorare sul'intervallo: noi abbiamo considerato 7 anni come dopo alcuni test iniziali e se si prendevano meno dati si aveva un calo di performance, e prendere più dati causava un aumento dell'overfitting. Però si potrebbe implementare un meccanismo di traning a finestra mobile, in modo da tenere il modello più aggiornato senza dover riaddestrarlo da zero.
+
+* Esplorare modelli alternativi: Noi abbiamo ulilizzato `XGBoost` come modello per motivi che abbiamo esposto sopra, ma come da secondo obbiettivo abbiamo analizzato anche altri modelli (come anche consigliato).
+    * Cercano online abbiamo trovato questo [articolo](https://www.itm-conferences.org/articles/itmconf/abs/2022/04/itmconf_icacc2022_03060/itmconf_icacc2022_03060.html) che confronta vari modelli per la regresione del prezzo di chiusura di Apple, e si vede come **Prophet** è il peggiore tra tutti i modelli considerati nello studio, questo unito a opinioni online che lo sconsigliano per questo tipo di problema ci ha fatto scartare questa opzione questo task, allora lo abbiamo evitato.
+    
+    * Abbiamo provato a vedere se **ARIMA** invece aveva del potenziale, abbiamo addestrato 5 modelli distiniti per la previsione il prezzo di close a distanza di 1,2,3,4 e 5 giorni, poi considerato il close del giorno corrente, ci abbiamo applicato la regola della double barrier per trasformarlo in un classificatore. Quello che abbiamo notato è che il risutato dipende molto dal peso della parte autoregressiva, differenziale e media mobile (P, D, Q), e passa da essere estremamente aggressivo (molti BUY) a estremamente conservativo (solo SELL), abbiamo trovato un punto di mezzo con la terna (1,1,0):
+    ![Matrice di confusione ARIMA](./img/cm_arima.png) 
+
+    Abbiamo anche fatto un testbench simile a quello fatto per XGBoost con un capitale inizale di 1000 e commissioni del 0.2% e il risultato è stato:
+
+    |Strategia|Capitale finale|Rendimento|
+    |---|---|---|
+    |Buy and Hold| 1220.71 | 22.071% |
+    |ARIMA | 1122.22 | 12.22% |
+
+    ![Trading ARIMA](./img/trading_arima.png)
+
+    * Inoltra abbiamo esplorato anche LSTM, che possibile esamio di rete neurale, che si è rivelata più performante di ARIMA e XGBoost, applicandoci solo gli stessi miglioramenti pensati per XGBoost (feature selection e soglia dinamica). Nonostante questi si sono rilevalati sufficenti per ottenere dei risultati migliori, quindi un ulteriore studio su LSTM potrebbe portare a risultati ancora migliori.
+    ![Matrice di confusione LSTM](./img/cm_lstm.png)
+
+    Anche in questo caso abbiamo fatto un testbench simile a quello fatto per XGBoost con un capitale inizale di 1000 e commissioni del 0.2% e il risultato è stato:
+
+    |Strategia|Capitale finale|Rendimento|
+    |---|---|---|
+    |Buy and Hold| 1220.71 | 22.071% |
+    |LSTM | 1253.45 | 25.345% | 
+
+    ![Trading LSTM](./img/trading_lstm.png) 
