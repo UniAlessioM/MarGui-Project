@@ -18,10 +18,9 @@ La natura del problema e l'ambiente finanziario in cui esso si svolge costituisc
 
 Dato il target infatti, in qualunque modo esso si ponga, è difficile trovare feature così determinanti da indicare subito la strada per l'obiettivo al modello. 
 
-Per attenuare quanto possibile questa problematica si è giunti a una versione semplificata del metodo della [Triple Barrier](https://mlfinpy.readthedocs.io/en/latest/Labelling.html) ovvero la **Double Barrier** :
+Per attenuare quanto possibile questa problematica si è giunti a una versione semplificata del metodo della [\underline{Triple Barrier}](https://mlfinpy.readthedocs.io/en/latest/Labelling.html) ovvero la **Double Barrier** :
 
 * dato un giorno vengono esaminati i giorni successivi (di default 5). Si pongono due barriere, una superiore (take profit +2% risp. al Close) e una inferiore (stop loss -1% risp. al Close): se il prezzo tocca prima quella superiore allora l'etichetta del Target sarà 1, se il prezzo tocca per prima quella inferiore o rimane tra le due. l'etichetta sarà 0. 
-
 
 ### Obiettivi secondari
 
@@ -29,12 +28,11 @@ Per attenuare quanto possibile questa problematica si è giunti a una versione s
 
 * Realizzare un banco di prova per i modelli sviluppati, in modo da vedere il loro comportamento in un contesto di trading simulato e confrontarli con strategie di trading basate su regole semplici.
 
-
 ## Approccio all'analisi dei dati e risultati (Data analysis approach and findings)
 
-La creazione e la scelta delle feature è stata guidata da uno studio del dominio cercando di capire cosa ognuna di esse potesse rappresentare nel mondo della finanza.
+La scelta delle features è stata effettuata attraverso la ricerca di indicatori tecnici specifici per il nostro obbiettivo, andando a studiare il dominio e riflettendo su cosa ogni indicatore potesse rappresentare in ambito finanziario. Inoltre abbiamo sperimentato con l'integrazione di indicatori provenienti da altri mercati (ad esempio quelli dell'indice VIX) per vedere se potessero essere significativi rispetto al target.
 
-Molte però hanno natura o costruzione simile e rischiano di essere ridondanti. Al fine di aiutare il modello nel perseguire il target si è adotatto un metodo di selezione delle feature basato su tre valutazioni principali:
+Molti di questi indici però hanno natura o costruzione simile e rischiano di essere ridondanti. Al fine di aiutare il modello nel perseguire il target si è adotatto un metodo di selezione delle feature basato su tre valutazioni principali:
 
 * **Correlazione lineare**: Attraverso la costruzione di una mappa di correlazione è possibile selezionare ed eventualmente rimuovere le feature che hanno una alta correlazione con altre feature.
 
@@ -100,7 +98,7 @@ Presi i dati a disposizione e noto il target, la pipeline per la creazione (e la
 
 7. Valutazione delle performance del modello attraverso metriche e testbench
 
-Al termine di una iterazione se ne possono eseguire altre modificando le feature seguendo i criteri di [feature selection](#scelta-e-analisi-delle-feature-features-selection-and-analisys) esposti sopra, tentando di ottenere un modello migliore.
+Al termine di una iterazione se ne possono eseguire altre modificando le feature seguendo i criteri di [\underline{feature selection}](#scelta-e-analisi-delle-feature-features-selection-and-analisys) esposti sopra, tentando di ottenere un modello migliore.
 
 ## Alcuni risultati 
 Come esempio vengono riportati qua sotto i risultati del modello che tenta le previsioni studiando le azioni di *Apple* dal gennaio 2018 al novembre 2024:
@@ -110,6 +108,7 @@ Classification Report (Test Set):
                 precision    recall  f1-score   support
             1       0.52      0.23      0.32       120
             0       0.61      0.85      0.71       170
+
      accuracy                           0.59       290
     macro avg       0.56      0.54      0.52       290
  weighted avg       0.57      0.59      0.55       290 
@@ -119,16 +118,18 @@ con la seguente matrice di confusione: \newpage
 
 ![Matrice di confusione](./img/cm.png)
 
-* Poi abbiamo visto anche confrontato il modello con altre strategie, in particolare abbiamo idealizzato una strategia basata sulle azioni del modello
-    * L'idea è di sfruttare la definizione del target per fare trading, quindi quando il modello predice un'etichetta positiva (1) e non si hanno azioni si compra il maggior numero di azioni disponibili con il capitale a disposizione, poi se per 5 giorni di fila il modello predice un'etichetta negativa (0) si vendono tutte le azioni possedute al 5 giorno, questo perchè si immaginamo che il modello sia corretti e quindi avendo 5 etichette negative consecuitve non ha più senso tenere le azioni, perchè non ci saranno variazioni positive nei prossimi giorni, però se nel intervallo di 5 giorni il modello predice un'etichetta positiva si continua a tenere le azioni e resettiamo il numero di giorni da aspettare.
+* Poi abbiamo visto anche confrontato il modello con altre strategie, in particolare abbiamo idealizzato una strategia che sfrutta le azioni del modello, analizzata più in dettaglio [\underline{sotto}](#dettagli-tecnici-implementativi-technical-implementation-details)
+    
 
-Quello che abbiamo ottenuto sul periodo che va da 2024-09-26 a 2025-11-28, partendo da un buget di 1000$ è:
+Quello che abbiamo ottenuto sul periodo che va da 2024-09-26 a 2025-11-28, partendo da un buget di 1000$ con commissioni al 0.2% è:
 
 |Strategia|Capitale finale|Rendimento|
 |---|---|---|
-|Buy and Hold| 1225.61 | 22.56% |
-|Trend Chaser| 1159.63 | 15.96% |
-|Modello | 1345.96 | 34.60% |
+|Buy and Hold| 1220.71 | 22.071% |
+|Trend Chaser| 1059.72 | 5.973% |
+|Modello | 1277.69 | 27.769% |
+
+\newpage
 
 ![Periodo testing](./img/trading.png)
 
@@ -151,7 +152,7 @@ Il progetto è stato sviluppato in **Python 3.12.3**, utilizzando **uv** come ge
           if model_state["shares"] == 0:
               # Buy completo
               model_state["shares"] += (model_state["cash"] * 
-                                          (1 - commission_interest)) / price
+                                (1 - commission_interest)) / price
               model_state["cash"] = 0.0
               model_state["streak"] = 0
           
@@ -160,7 +161,7 @@ Il progetto è stato sviluppato in **Python 3.12.3**, utilizzando **uv** come ge
           if model_state["shares"] != 0 and (model_state["streak"] > 5):
               # Vendita totale
               model_state["cash"] += model_state["shares"] * price * 
-                                      (1 - commission_interest)
+                                    (1 - commission_interest)
               model_state["shares"] = 0.0
               model_state["streak"] = 0
   
@@ -179,20 +180,69 @@ Il progetto è stato sviluppato in **Python 3.12.3**, utilizzando **uv** come ge
 - Per lo sviluppo dell’applicativo è stato utilizzato **Flask**, insieme a **CSS personalizzato** e **Bootstrap** per la parte grafica.
 - Ulteriori dettagli relativi alla struttura del progetto e allo scopo dei singoli file sono disponibili nel file `./README.md`.
 
----
-
 ## Difficoltà incontrate e soluzioni (Challenges Encountered and Solutions)
 
-- **Elevata rumorosità del target**: il problema è stato affrontato tramite la definizione del target mediante il **Double Barrier Method**.
-- **Limitata conoscenza del dominio finanziario**: questa criticità ha richiesto un’estesa attività di ricerca per individuare le feature più rilevanti, portando anche alla scelta di modelli capaci di estrarre automaticamente le feature e all’uso di tecniche di selezione delle stesse.
-- **Selezione degli iperparametri ottimali**: è stato osservato fin dalle prime analisi che il dataset non risultava perfettamente bilanciato; per questo motivo è stato utilizzato il parametro `scale_pos_weight` di XGBoost per compensare lo sbilanciamento delle classi. Inoltre, l’aumento del valore di `min_child_weight` ha mostrato un miglioramento delle prestazioni in termini di precisione. Al contrario, valori troppo elevati o troppo bassi di `max_depth` hanno evidenziato un incremento del rischio di overfitting.
+### Natura del problema
 
----
+L’obiettivo del progetto, ovvero la classificazione dell’andamento di un titolo azionario, risulta estremamente complesso a causa della sua natura pseudo-randomica. Questa caratteristica comporta alcune difficoltà principali, tra cui:
+
+* **Elevata rumorosità**: nella fase iniziale, la classificazione era basata sul prezzo di chiusura del giorno successivo rispetto a quello di riferimento. Ciò generava un target altamente rumoroso e difficilmente prevedibile. Per ovviare a questo problema, è stato definito un nuovo target finalizzato alla rappresentazione di un trend nel titolo. Tale obiettivo è stato raggiunto mediante l’introduzione della Double Barrier, che ha consentito di ridurre il rumore e rendere il target più stabile.
+
+* **Overfitting**: data la natura del problema e l’elevata complessità del dominio finanziario, il modello tendeva a sovradattarsi ai dati di training. Per mitigare questo fenomeno sono stati adottati diversi accorgimenti, tra cui l’impiego di tecniche di regolarizzazione (L1 e L2), una selezione accurata delle feature e l’ottimizzazione degli iperparametri.
+
+### Ricerca iperparametri
+Nelle prime fasi di training, la selezione degli iperparametri veniva effettuata manualmente. Questo approccio ha portato all’individuazione di valori in grado di fornire buoni risultati su un dataset relativo a un singolo titolo; tuttavia, mantenendo tali valori ed estendendo il dataset su un arco temporale più ampio, le performance del modello diminuivano drasticamente.
+
+Questa criticità ha reso necessaria l’implementazione di una procedura di ricerca automatizzata degli iperparametri tramite la libreria `Optuna`. Tale soluzione ha consentito di automatizzare il processo di ottimizzazione, rendendo il flusso di lavoro assimilabile a una catena di montaggio: ogni volta che viene modificata una componente del processo (ad esempio le feature), è possibile rieseguire l’ottimizzazione degli iperparametri per adattarli al nuovo scenario, riducendo significativamente il tempo richiesto.
+
+### Conversione della probabilità in segnale
+Inizialmente, la soglia di conversione della probabilità in segnale era statica e fissata a 0,5. Tale valore risultava più performante in periodi di mercato in discesa o stabile; tuttavia, nelle fasi di mercato in crescita, le performance del modello tendevano a diminuire.
+
+Per affrontare questa problematica, è stata introdotta una soglia dinamica in grado di adattarsi al contesto di mercato in cui il modello pensa di operare. Attraverso l’utilizzo del _rolling z-score_ è stato possibile migliorare in modo significativo le performance complessive del modello. Tuttavia, nei periodi di mercato in discesa, probabilità dell’ordine di 0,2–0,3 venivano talvolta interpretate come segnali di BUY, generando perdite.
+
+Per risolvere tale criticità, è stato imposto un valore minimo alla soglia dinamica, così da evitare che probabilità eccessivamente basse venissero considerate come segnali di acquisto.
+
+### Adattamento di ARIMA da regressore a classificatore
+Quando è stata intrapresa l’esplorazione di modelli alternativi, uno dei primi considerati è stato ARIMA. Tuttavia, a differenza di XGBoost, ARIMA è un modello di regressione; di conseguenza, per poterlo utilizzare ai fini del progetto è stato necessario adattarlo.
+
+La strategia adottata ha previsto l’addestramento di cinque modelli distinti, ciascuno dedicato alla previsione del prezzo di chiusura a 1, 2, 3, 4 e 5 giorni di distanza. Successivamente, considerando il prezzo di chiusura del giorno corrente, è stata applicata la regola della Double Barrier per trasformare l’output del modelli in un valore binario, rendendolo più coerente con il nostro modello.
 
 ## Eventuali miglioramenti futuri (Possible Future Improvements)
 
-L’analisi si è concentrata principalmente su modelli già affrontati nel corso; tuttavia, esistono diverse alternative che potrebbero essere esplorate in futuro:
+In questo progetto è stato esplorato il problema del classificatore binario per la previsione del prezzo di chiusura di un titolo azionario, affrontando e risolvendo problemi come quelli visti sopra.
 
-- **PROPHET di Meta**, che da quanto emerso in letteratura online risulta non particolarmente adatto a questo specifico obiettivo (allegare riferimenti).
-- **ARIMA**, adattato come classificatore binario mediante l’addestramento di cinque modelli distinti per la previsione a 1, 2, 3, 4 e 5 giorni, seguiti dall’applicazione del Double Barrier Method. I risultati ottenuti non hanno tuttavia superato quelli di XGBoost (allegare risultati ARIMA).
-- **LSTM**, esplorato in via preliminare: anche con ipotesi simili a quelle adottate per XGBoost, sono stati ottenuti risultati promettenti. Un’analisi più approfondita e una migliore ottimizzazione potrebbero portare a prestazioni superiori (allegare risultati LSTM).
+Tuttavia, sono rimaste molte altre strade da poter esplorare per migliorare ulteriormente il progetto, come:
+
+* **Introduzione di una metrica di valutazione dell’_investor sentiment_**: l’analisi della correlazione, nel caso di Apple, tra il sentimento del pubblico a seguito degli eventi di annuncio annuali evidenzia andamenti significativi. In particolare, in corrispondenza dell’annuncio di Apple Silicon si osserva un picco del sentimento positivo, mentre subito dopo l’annuncio dell’iPhone 15 si registra un calo. Da queste osservazioni nasce l’idea di provare a introdurre una metrica in grado di valutare il sentimento di investitori e utenti sui social network, e integrarla come feature aggiuntiva nel modello
+
+* **Dataset e modalità di training**: la dimensione del dataset è stata definita attraverso una serie di test condotti su un prototipo iniziale. È emerso che un dataset di dimensioni troppo ridotte favoriva un maggiore overfitting, mentre un’eccessiva espansione portava a una riduzione delle prestazioni del modello. Le modalità di training sono state descritte in modo dettagliato in precedenza. Un possibile miglioramento futuro consiste nell’implementazione di un meccanismo di training a finestra mobile, che consentirebbe di mantenere il modello aggiornato nel tempo senza la necessità di riaddestrarlo completamente da zero
+
+* Esplorare modelli alternativi: Noi abbiamo ulilizzato `XGBoost` come modello per motivi che abbiamo esposto sopra, ma come da secondo obbiettivo abbiamo analizzato anche altri modelli.
+    * Cercando online è stato individuato un [\underline{articolo}](https://www.itm-conferences.org/articles/itmconf/abs/2022/04/itmconf_icacc2022_03060/itmconf_icacc2022_03060.html) che confronta diversi modelli per la regressione del prezzo di chiusura di Apple. In tale confronto, **Prophet** risulta essere il modello con le prestazioni peggiori tra quelli considerati nello studio. Questa evidenza, unita ad opinioni reperite online secondo le quali Prophet tende ad adottare un approccio eccessivamente lineare per questo tipo di problema, ha portato alla decisione di non includere Prophet nelle analisi personali perchè non significativo. \newpage
+    
+    * È stata quindi valutata la possibilità che **ARIMA** presentasse un potenziale maggiore. Il problema della conversione da modello di regressione a classificatore è stato risolto come descritto in [\underline{precedenza}](#adattamento-di-arima-da-regressore-a-classificatore). Dall’analisi è emerso che il risultato dipende in modo significativo dal peso delle componenti autoregressiva, differenziale e di media mobile (P, D, Q). In funzione di tali parametri, il modello può assumere un comportamento estremamente aggressivo, generando numerosi segnali di BUY, oppure estremamente conservativo, producendo esclusivamente segnali di SELL. La configurazione che ha fornito i risultati migliori è stata (1, 1, 0), la quale ha generato un singolo segnale di BUY con una precisione del 100%, segue la matrice di confusione risultante:
+
+      ![Matrice di confusione ARIMA](./img/cm_arima.png) 
+
+      Abbiamo anche qui fatto un testbench simile a quello fatto per XGBoost con un capitale inizale di 1000 e commissioni del 0.2% e il risultato è stato:
+
+      |Strategia|Capitale finale|Rendimento|
+      |---|---|---|
+      |Buy and Hold| 1220.71 | 22.071% |
+      |ARIMA | 1122.22 | 12.222% |
+
+      ![Trading ARIMA](./img/trading_arima.png)
+      \newpage
+
+    * È stato inoltre esplorato l’utilizzo di una rete neurale di tipo **LSTM**. Questo modello si è dimostrato più performante rispetto ad ARIMA e XGBoost, pur applicando esclusivamente gli stessi miglioramenti sviluppati per quest’ultimo, come la selezione delle feature e l’introduzione di una soglia dinamica. Nonostante la semplicità degli accorgimenti adottati, tali interventi si sono rivelati sufficienti per ottenere risultati molto positivi. Di conseguenza, uno studio più approfondito e specificamente incentrato sulle LSTM potrebbe condurre a prestazioni ulteriormente migliori. Seguono i risultati ottenuti:
+
+      ![Matrice di confusione LSTM](./img/cm_lstm.png)
+
+      Anche in questo caso abbiamo fatto un testbench simile a quello fatto per XGBoost con un capitale inizale di 1000 e commissioni del 0.2% e il risultato è stato:
+    
+      |Strategia|Capitale finale|Rendimento|
+      |---|---|---|
+      |Buy and Hold| 1220.71 | 22.071% |
+      |LSTM | 1390.29 | 39.029% |
+
+      ![Trading LSTM](./img/trading_lstm.png) 
