@@ -14,7 +14,7 @@ L'obiettivo del progetto è la realizzazione di un classificatore binario in gra
 
 ### Scelta del Target
 
-La natura del problema e l'ambiente finanziario in cui esso si svolge costituiscono una grande sfida che porta il nostro modello ad affrontare costantemente: **overfitting** e **rumore**.
+La natura del problema e l'ambiente finanziario costituiscono una grande sfida che porta il nostro modello ad affrontare costantemente: **overfitting** e **rumore**.
 
 Dato il target infatti, in qualunque modo esso si ponga, è difficile trovare feature così determinanti da indicare subito la strada per l'obiettivo al modello. 
 
@@ -118,10 +118,9 @@ con la seguente matrice di confusione: \newpage
 
 ![Matrice di confusione](./img/cm.png)
 
-* Poi abbiamo visto anche confrontato il modello con altre strategie, in particolare abbiamo idealizzato una strategia che sfrutta le azioni del modello, analizzata più in dettaglio [\underline{sotto}](#dettagli-tecnici-implementativi-technical-implementation-details)
-    
+*Poi è stato anche visto e confrontato il modello con altre strategie; in particolare è stata idealizzata una strategia che sfrutta le azioni del modello, analizzata più in dettaglio \underline{sotto}
 
-Quello che abbiamo ottenuto sul periodo che va da 2024-09-26 a 2025-11-28, partendo da un buget di 1000$ con commissioni al 0.2% è:
+Quello che è stato ottenuto nel periodo che va dal 2024-09-26 al 2025-11-28, partendo da un budget di 1000$ con commissioni allo 0.2%, è:
 
 |Strategia|Capitale finale|Rendimento|
 |---|---|---|
@@ -164,11 +163,11 @@ Il progetto è stato sviluppato in **Python 3.12.3**, utilizzando **uv** come ge
                                     (1 - commission_interest)
               model_state["shares"] = 0.0
               model_state["streak"] = 0
-  
+
       return model_state["cash"] + (model_state["shares"] * price)
   ```
   
-  In sintesi, quando il modello genera un segnale **BUY** e non sono presenti posizioni aperte, viene effettuato l’acquisto del massimo numero possibile di azioni. Le azioni vengono mantenute in portafoglio per **5 giorni**; qualora, durante questo periodo, il modello generi un ulteriore segnale **BUY**, il conteggio dei 5 giorni viene riavviato. Al termine di tale intervallo, tutte le azioni vengono vendute. Ogni operazione di mercato è soggetta a un costo di commissione, espresso dal parametro `commission_interest`.
+  In sintesi, quando il modello genera un segnale **BUY** e non si possiedono delle azioni, ne viene acquistato il numero massimo possibile. Le azioni vengono mantenute in portafoglio per **5 giorni**; qualora, durante questo periodo, il modello generi un ulteriore segnale **BUY**, il conteggio dei 5 giorni viene riavviato. Al termine di tale intervallo, tutte le azioni vengono vendute. Ogni operazione di mercato è soggetta a un costo di commissione, espresso dal parametro `commission_interest`.
 
 - La generazione del modello avviene tramite il file `./ImprovedPipeline.ipynb`, che salva il modello addestrato insieme a diverse informazioni associate:
   - `model`: il modello addestrato
@@ -243,6 +242,6 @@ Tuttavia, sono rimaste molte altre strade da poter esplorare per migliorare ulte
       |Strategia|Capitale finale|Rendimento|
       |---|---|---|
       |Buy and Hold| 1220.71 | 22.071% |
-      |LSTM | 1390.29 | 39.029% |
+      |LSTM | 1360.47 | 36.05% |
 
       ![Trading LSTM](./img/trading_lstm.png) 
