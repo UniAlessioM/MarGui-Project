@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 
 target_window = 5
+TICKER = "AAPL"
 
 def calculate_target(df, window=target_window, profit_take_pct=1.5, stop_loss_pct=1.5):
     
