@@ -14,13 +14,13 @@ L'obiettivo del progetto è la realizzazione di un classificatore binario in gra
 
 ### Scelta del Target
 
-La natura del problema e l'ambiente finanziario costituiscono una grande sfida che porta il nostro modello ad affrontare costantemente: **overfitting** e **rumore**.
+La natura del problema e l'ambiente finanziario costituiscono una grande sfida che porta il modello ad affrontare costantemente: **overfitting** e **rumore**.
 
 Dato il target infatti, in qualunque modo esso si ponga, è difficile trovare feature così determinanti da indicare subito la strada per l'obiettivo al modello. 
 
 Per attenuare quanto possibile questa problematica si è giunti a una versione semplificata del metodo della [\underline{Triple Barrier}](https://mlfinpy.readthedocs.io/en/latest/Labelling.html) ovvero la **Double Barrier** :
 
-* dato un giorno vengono esaminati i giorni successivi (di default 5). Si pongono due barriere, una superiore (take profit +2% risp. al Close) e una inferiore (stop loss -1% risp. al Close): se il prezzo tocca prima quella superiore allora l'etichetta del Target sarà 1, se il prezzo tocca per prima quella inferiore o rimane tra le due. l'etichetta sarà 0. 
+* dato un giorno vengono esaminati i giorni successivi (di default 5). Si pongono due barriere, una superiore (take profit +2% risp. al Close) e una inferiore (stop loss -1% risp. al Close): se il prezzo tocca prima quella superiore allora l'etichetta del Target sarà 1, se il prezzo tocca per prima quella inferiore o rimane tra le due l'etichetta sarà 0. 
 
 ### Obiettivi secondari
 
@@ -30,7 +30,7 @@ Per attenuare quanto possibile questa problematica si è giunti a una versione s
 
 ## Approccio all'analisi dei dati e risultati (Data analysis approach and findings)
 
-La scelta delle features è stata effettuata attraverso la ricerca di indicatori tecnici specifici per il nostro obbiettivo, andando a studiare il dominio e riflettendo su cosa ogni indicatore potesse rappresentare in ambito finanziario. Inoltre abbiamo sperimentato con l'integrazione di indicatori provenienti da altri mercati (ad esempio quelli dell'indice VIX) per vedere se potessero essere significativi rispetto al target.
+La scelta delle features è stata effettuata attraverso la ricerca di indicatori tecnici specifici per l'obiettivo, andando a studiare il dominio e riflettendo su cosa ogni indicatore potesse rappresentare in ambito finanziario. Inoltre sono stati integrati indicatori provenienti da altri mercati (ad esempio quelli dell'indice sp500-45) per vedere se potessero essere significativi rispetto al target.
 
 Molti di questi indici però hanno natura o costruzione simile e rischiano di essere ridondanti. Al fine di aiutare il modello nel perseguire il target si è adotatto un metodo di selezione delle feature basato su tre valutazioni principali:
 
@@ -68,13 +68,13 @@ possiede un vasto parco di iperparametri da poter gestire utili a combattere l'o
 
 ### Soglia delle previsioni 
 
-Il modello di XGBoost fornisce come risultato una probabilità che un dato campione appartenga alla classe positiva. Dovendo convertire tale probabilità in un segnale 1 o 0 è necessario introdurre una soglia che sancisca questa divisione. Dopo alcuni tentativi con soglia statica è stata introdotta una soglia dinamica che si basa sui valori più recenti restituiti dal modello. Tale soglia viene scelta grazie all'utilizzo del coefficiente di Matthew che fornisce una misura della qualità di una predizione. 
+Il modello di XGBoost fornisce come risultato una probabilità che un dato campione appartenga alla classe positiva. Dovendo convertire tale probabilità in un segnale 1 o 0 è necessario introdurre una soglia che sancisca questa divisione. Dopo alcuni tentativi con soglia statica è stata introdotta una soglia dinamica che si basa sui valori più recenti restituiti dal modello. Tale soglia viene scelta grazie all'utilizzo del coefficiente di Matthews che fornisce una misura della qualità di una predizione. 
 
 La soglia è stata definita attraverso una metrica nota come _rolling-z-score_. La threshold viene calcolata come la media dei valori ($\mu$) predetti negli ultimi $n$ giorni più $k$ volte la deviazione standard ($\sigma$):
     $$
     threshold = \mu_{\text{su ultimi } n \text{ giorni}} + k \cdot \sigma_{\text{su ultimi } n \text{ giorni}}
     $$ 
-$k$ viene scelto sul validation set in modo da massimizzare il coefficente di Matthew.
+$k$ viene scelto sul validation set in modo da massimizzare il coefficente di Matthews.
 
 ### Metriche di valutazione del modello
 Per valutare i risultati delle predizioni del modello sono state utilizzate diverse metriche (in particolare la *overall accuracy* e la  *precision* sulle singole classi) che accompagnate dalla *confusion matrix* hanno costituito la base per la valutazione del modello, almeno dal punto di vista statistico. 
@@ -118,7 +118,7 @@ con la seguente matrice di confusione: \newpage
 
 ![Matrice di confusione](./img/cm.png)
 
-*Poi è stato anche visto e confrontato il modello con altre strategie; in particolare è stata idealizzata una strategia che sfrutta le azioni del modello, analizzata più in dettaglio \underline{sotto}
+*Poi è stato anche visto e confrontato il modello con altre strategie; in particolare è stata ideata una strategia che sfrutta le azioni del modello, analizzata più in dettaglio \underline{sotto}
 
 Quello che è stato ottenuto nel periodo che va dal 2024-09-26 al 2025-11-28, partendo da un budget di 1000$ con commissioni allo 0.2%, è:
 
@@ -138,7 +138,7 @@ Il progetto è stato sviluppato in **Python 3.12.3**, utilizzando **uv** come ge
 
 - L’intero sviluppo è stato effettuato in ambiente **Linux (Ubuntu)**, utilizzando **WSL** su sistema host **Windows**.
 - I dati vengono acquisiti tramite la libreria `yfinance`; successivamente vengono calcolati gli indicatori tecnici mediante la libreria `ta` e salvati in file **CSV**, al fine di evitare calcoli ripetuti.
-- Per l’elaborazione dei dati sono state utilizzate le librerie `pandas` e `numpy`, mentre la visualizzazione è stata realizzata tramite `matplotlib`.
+- Per l’elaborazione dei dati sono state utilizzate le librerie `pandas` e `numpy`, mentre la visualizzazione è stata realizzata tramite `matplotlib` (e plotly per l'applicazione).
 - Il modello principale utilizzato è `XGBoost`, con ottimizzazione degli iperparametri effettuata tramite `Optuna`.
 - La funzione che calcola il target della **Double Barrier** è stata implementata nel file `./target.py`
 - La testbench che permette la valutazione del modello è stata implementata in `./TradingTestbench.ipynb` e la logica di trading è contentuta nel seguente segmento:

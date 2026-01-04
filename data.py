@@ -4,6 +4,9 @@ from TickerTracker.indeces import add_indeces
 from TickerTracker.indeces import start, end
 os.makedirs("csv", exist_ok=True)
 
+# Nel file stocks.txt si possono inserire più sigle di vari ticker
+# per scaricare i dati tutti in una volta sola
+
 with open("stocks.txt", "r") as f:
     stocks = [line.strip() for line in f if line.strip()]
 

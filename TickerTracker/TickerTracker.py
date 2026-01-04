@@ -7,10 +7,9 @@ import numpy as np
 import joblib
 import xgboost as xgb
 from indeces import add_indeces
+from target import TICKER
 
 app = Flask(__name__)
-
-TICKER = "AAPL"
 
 bundle = joblib.load(f"model/{TICKER}.joblib")
 
