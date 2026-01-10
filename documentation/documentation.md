@@ -2,7 +2,7 @@
 #documentclass: scrartcl
 documentclass: article
 fontsize: 12pt
-geometry: margin=3cm
+geometry: margin=1.5cm
 output: pdf_document
 ---
 
@@ -29,6 +29,19 @@ Per attenuare quanto possibile questa problematica si è giunti a una versione s
 * Realizzare un banco di prova per i modelli sviluppati, in modo da vedere il loro comportamento in un contesto di trading simulato e confrontarli con strategie di trading basate su regole semplici.
 
 ## Approccio all'analisi dei dati e risultati (Data analysis approach and findings)
+
+### Dati utilizzati e applicazione del target
+I dati raccolti per l'addestramento e la valutazione del modello vanno dal 01-01-2018 fino al 30-11-2025. A seguito del calcolo degli indicatori tecnici finanziari e all'applicazione del target sopracitato la dimensione del dataset si riduce temporalmente all'arco di tempo che va dal 19-03-2018 al 28-11-2025 per un totale di 1929 record di dati etichettati come segue:
+
+|Buy|Sell|
+|---|---|
+|1131| 798 |
+
+\newpage
+
+![Andamento del prezzo di chiusura di Apple](./img/AAPL_close.png)
+
+### Scelta delle features
 
 La scelta delle features è stata effettuata attraverso la ricerca di indicatori tecnici specifici per l'obiettivo, andando a studiare il dominio e riflettendo su cosa ogni indicatore potesse rappresentare in ambito finanziario. Inoltre sono stati integrati indicatori provenienti da altri mercati (ad esempio quelli dell'indice sp500-45) per vedere se potessero essere significativi rispetto al target.
 
@@ -114,11 +127,11 @@ Classification Report (Test Set):
  weighted avg       0.57      0.59      0.55       290 
 ```    
 
-con la seguente matrice di confusione: \newpage
+con la seguente matrice di confusione: 
 
-![Matrice di confusione](./img/cm.png)
+![Matrice di confusione](./img/cm.png){ width=10cm }
 
-*Poi è stato anche visto e confrontato il modello con altre strategie; in particolare è stata ideata una strategia che sfrutta le azioni del modello, analizzata più in dettaglio \underline{sotto}
+* Poi è stato anche visto e confrontato il modello con altre strategie; in particolare è stata ideata una strategia che sfrutta le azioni del modello, analizzata più in dettaglio \underline{sotto}
 
 Quello che è stato ottenuto nel periodo che va dal 2024-09-26 al 2025-11-28, partendo da un budget di 1000$ con commissioni allo 0.2%, è:
 
@@ -127,8 +140,8 @@ Quello che è stato ottenuto nel periodo che va dal 2024-09-26 al 2025-11-28, pa
 |Buy and Hold| 1220.71 | 22.071% |
 |Trend Chaser| 1059.72 | 5.973% |
 |Modello | 1277.69 | 27.769% |
-
 \newpage
+
 
 ![Periodo testing](./img/trading.png)
 
@@ -217,11 +230,11 @@ Tuttavia, sono rimaste molte altre strade da poter esplorare per migliorare ulte
 * **Dataset e modalità di training**: la dimensione del dataset è stata definita attraverso una serie di test condotti su un prototipo iniziale. È emerso che un dataset di dimensioni troppo ridotte favoriva un maggiore overfitting, mentre un’eccessiva espansione portava a una riduzione delle prestazioni del modello. Le modalità di training sono state descritte in modo dettagliato in precedenza. Un possibile miglioramento futuro consiste nell’implementazione di un meccanismo di training a finestra mobile, che consentirebbe di mantenere il modello aggiornato nel tempo senza la necessità di riaddestrarlo completamente da zero
 
 * Esplorare modelli alternativi: Noi abbiamo ulilizzato `XGBoost` come modello per motivi che abbiamo esposto sopra, ma come da secondo obbiettivo abbiamo analizzato anche altri modelli.
-    * Cercando online è stato individuato un [\underline{articolo}](https://www.itm-conferences.org/articles/itmconf/abs/2022/04/itmconf_icacc2022_03060/itmconf_icacc2022_03060.html) che confronta diversi modelli per la regressione del prezzo di chiusura di Apple. In tale confronto, **Prophet** risulta essere il modello con le prestazioni peggiori tra quelli considerati nello studio. Questa evidenza, unita ad opinioni reperite online secondo le quali Prophet tende ad adottare un approccio eccessivamente lineare per questo tipo di problema, ha portato alla decisione di non includere Prophet nelle analisi personali perchè non significativo. \newpage
+    * Cercando online è stato individuato un [\underline{articolo}](https://www.itm-conferences.org/articles/itmconf/abs/2022/04/itmconf_icacc2022_03060/itmconf_icacc2022_03060.html) che confronta diversi modelli per la regressione del prezzo di chiusura di Apple. In tale confronto, **Prophet** risulta essere il modello con le prestazioni peggiori tra quelli considerati nello studio. Questa evidenza, unita ad opinioni reperite online secondo le quali Prophet tende ad adottare un approccio eccessivamente lineare per questo tipo di problema, ha portato alla decisione di non includere Prophet nelle analisi personali perchè non significativo. 
     
-    * È stata quindi valutata la possibilità che **ARIMA** presentasse un potenziale maggiore. Il problema della conversione da modello di regressione a classificatore è stato risolto come descritto in [\underline{precedenza}](#adattamento-di-arima-da-regressore-a-classificatore). Dall’analisi è emerso che il risultato dipende in modo significativo dal peso delle componenti autoregressiva, differenziale e di media mobile (P, D, Q). In funzione di tali parametri, il modello può assumere un comportamento estremamente aggressivo, generando numerosi segnali di BUY, oppure estremamente conservativo, producendo esclusivamente segnali di SELL. La configurazione che ha fornito i risultati migliori è stata (1, 1, 0), la quale ha generato un singolo segnale di BUY con una precisione del 100%, segue la matrice di confusione risultante:
+    * È stata quindi valutata la possibilità che **ARIMA** presentasse un potenziale maggiore. Il problema della conversione da modello di regressione a classificatore è stato risolto come descritto in [\underline{precedenza}](#adattamento-di-arima-da-regressore-a-classificatore). Dall’analisi è emerso che il risultato dipende in modo significativo dal peso delle componenti autoregressiva, differenziale e di media mobile (P, D, Q). In funzione di tali parametri, il modello può assumere un comportamento estremamente aggressivo, generando numerosi segnali di BUY, oppure estremamente conservativo, producendo esclusivamente segnali di SELL. La configurazione che ha fornito i risultati migliori è stata (1, 1, 0), la quale ha generato un singolo segnale di BUY con una precisione del 100%, segue la matrice di confusione risultante: 
 
-      ![Matrice di confusione ARIMA](./img/cm_arima.png) 
+      ![Matrice di confusione ARIMA](./img/cm_arima.png){ width=10cm }
 
       Abbiamo anche qui fatto un testbench simile a quello fatto per XGBoost con un capitale inizale di 1000 e commissioni del 0.2% e il risultato è stato:
 
@@ -230,12 +243,12 @@ Tuttavia, sono rimaste molte altre strade da poter esplorare per migliorare ulte
       |Buy and Hold| 1220.71 | 22.071% |
       |ARIMA | 1122.22 | 12.222% |
 
-      ![Trading ARIMA](./img/trading_arima.png)
-      \newpage
+      ![Trading ARIMA](./img/trading_arima.png){ height=6.5cm }
+      
 
     * È stato inoltre esplorato l’utilizzo di una rete neurale di tipo **LSTM**. Questo modello si è dimostrato più performante rispetto ad ARIMA e XGBoost, pur applicando esclusivamente gli stessi miglioramenti sviluppati per quest’ultimo, come la selezione delle feature e l’introduzione di una soglia dinamica. Nonostante la semplicità degli accorgimenti adottati, tali interventi si sono rivelati sufficienti per ottenere risultati molto positivi. Di conseguenza, uno studio più approfondito e specificamente incentrato sulle LSTM potrebbe condurre a prestazioni ulteriormente migliori. Seguono i risultati ottenuti:
 
-      ![Matrice di confusione LSTM](./img/cm_lstm.png)
+      ![Matrice di confusione LSTM](./img/cm_lstm.png){ width=10cm }
 
       Anche in questo caso abbiamo fatto un testbench simile a quello fatto per XGBoost con un capitale inizale di 1000 e commissioni del 0.2% e il risultato è stato:
     
@@ -244,4 +257,4 @@ Tuttavia, sono rimaste molte altre strade da poter esplorare per migliorare ulte
       |Buy and Hold| 1220.71 | 22.071% |
       |LSTM | 1360.47 | 36.05% |
 
-      ![Trading LSTM](./img/trading_lstm.png) 
+      ![Trading LSTM](./img/trading_lstm.png)
